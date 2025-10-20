@@ -1,0 +1,9 @@
+package dao;
+
+import java.util.List;
+import vo.PayrollDueVo;
+
+public interface ReportDao {
+    int getCompanyBalance();
+    List<PayrollDueVo> listPayrollDue();  // 全部員工（含已結/未結），未結過濾交由 Service
+}

@@ -1,0 +1,30 @@
+package util;
+
+import java.awt.Color;
+import java.awt.Font;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.StandardChartTheme;
+
+public final class ChartThemeCN {
+    private ChartThemeCN(){}
+
+    public static void install() {
+        Font title  = ChartFont.pick(Font.BOLD, 18);
+        Font large  = ChartFont.pick(Font.PLAIN, 13);
+        Font normal = ChartFont.pick(Font.PLAIN, 12);
+        Font small  = ChartFont.pick(Font.PLAIN, 11);
+
+        StandardChartTheme theme = new StandardChartTheme("TW-CJK");
+        theme.setExtraLargeFont(title);
+        theme.setLargeFont(large);
+        theme.setRegularFont(normal);
+        theme.setSmallFont(small);
+
+        theme.setChartBackgroundPaint(Color.WHITE);
+        theme.setPlotBackgroundPaint(Color.WHITE);
+        theme.setDomainGridlinePaint(new Color(220,220,220));
+        theme.setRangeGridlinePaint(new Color(220,220,220));
+
+        ChartFactory.setChartTheme(theme);
+    }
+}

@@ -1,0 +1,6 @@
+package service;
+
+public interface ProcurementService {
+    boolean procure(int adminEmpId, int productId, int quantity);
+    boolean insert(int adminEmpId, int productId, int quantity, int costUnit, int costTotal);
+}

@@ -1,0 +1,12 @@
+package service;
+
+import model.Employee;
+import java.util.List;
+
+public interface EmployeeService {
+    Employee loginByCode(String empCode);
+    void hire(Employee e) throws IllegalArgumentException;
+    void fire(int employeeId);
+    List<Employee> listActive();
+    boolean verifyAdmin(int employeeId, String adminPassword);
+}

@@ -1,0 +1,7 @@
+package service;
+public interface AttendanceService {
+    int clockIn(String empCode, boolean admin);
+    void clockOut(String empCode);
+    int unpaidAmount(String empCode); // 以秒*rate
+    void markPaid(String empCode);
+}

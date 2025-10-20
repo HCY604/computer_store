@@ -1,0 +1,8 @@
+package service;
+
+import model.Employee;
+
+public interface EmployeeService {
+    void register(Employee e) throws IllegalArgumentException; // 新增
+    Employee login(String username, String password);
+}

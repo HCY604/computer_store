@@ -1,0 +1,13 @@
+package service.impl;
+
+import dao.ReportDao;
+import dao.impl.ReportDaoImpl;
+import service.ReportService;
+import vo.DailyProfitVo;
+
+import java.util.List;
+
+public class ReportServiceImpl implements ReportService {
+    private final ReportDao dao = new ReportDaoImpl();
+    @Override public List<DailyProfitVo> listDailyProfit(int lastNDays) { return dao.listDailyProfit(lastNDays); }
+}

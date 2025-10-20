@@ -1,0 +1,55 @@
+package controller;
+
+import model.Employee;
+import service.AttendanceService;
+import service.impl.AttendanceServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class EmployeeHome extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final Employee emp;
+    private final AttendanceService attSvc = new AttendanceServiceImpl();
+
+    public EmployeeHome(JFrame back, Employee emp) {
+        this.back=back; this.emp=emp;
+        setSize(420, 280);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "員工主頁（"+emp.getEmpCode()+" - "+emp.getEmpName()+"）");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JButton btnIn = new JButton("上班打卡");
+        JButton btnOut= new JButton("下班打卡");
+        JButton btnAdmin = new JButton("登入管理員"); // 需密碼 123456 且該員工具管理員權限
+
+        btnIn.setBounds(40, 80, 110, 32);
+        btnOut.setBounds(160,80,110,32);
+        btnAdmin.setBounds(280,80,110,32);
+
+        add(btnIn); add(btnOut); add(btnAdmin);
+
+        btnIn.addActionListener(e -> {
+            try {
+                if (attSvc.unpaidAmount(emp.getEmpCode())<0) {} // no-op
+                attSvc.clockIn(emp.getEmpCode(), emp.isAdmin());
+                JOptionPane.showMessageDialog(this,"上班成功");
+            } catch (Exception ex){ JOptionPane.showMessageDialog(this, ex.getMessage()); }
+        });
+
+        btnOut.addActionListener(e -> {
+            try {
+                attSvc.clockOut(emp.getEmpCode());
+                JOptionPane.showMessageDialog(this,"下班成功");
+            } catch (Exception ex){ JOptionPane.showMessageDialog(this, ex.getMessage()); }
+        });
+
+        btnAdmin.addActionListener(e -> {
+            if (!emp.isAdmin()){ JOptionPane.showMessageDialog(this,"你沒有管理員權限"); return; }
+            new AdminPasswordDialog(this, () -> new AdminHome(this).setVisible(true)).setVisible(true);
+        });
+    }
+}

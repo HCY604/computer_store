@@ -1,0 +1,42 @@
+package controller;
+
+import model.Employee;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class AdminLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private final Employee emp;
+    private JPasswordField tPin;
+
+    public AdminLogin(JFrame back, Employee emp) {
+        this.back = back;
+        this.emp = emp;
+        setSize(360, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "管理員登入");
+        UiKit.createBackButton(this, e -> { if (back!=null) back.setVisible(true); dispose(); });
+
+        JLabel l1=new JLabel("管理員密碼："); l1.setBounds(40,60,100,24); add(l1);
+        tPin=new JPasswordField(); tPin.setBounds(140,60,160,24); add(tPin);
+
+        JButton btn=new JButton("登入"); btn.setBounds(140,100,90,28); add(btn);
+        btn.addActionListener(e -> doLogin());
+    }
+
+    private void doLogin() {
+        String pin = new String(tPin.getPassword());
+        if (pin.isEmpty()){ JOptionPane.showMessageDialog(this,"請輸入管理員密碼"); return; }
+        if (emp.getAdminPin()!=null && emp.getAdminPin().equals(pin)) {
+            new AdminPanel(emp, back).setVisible(true);
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this,"密碼錯誤");
+        }
+    }
+}

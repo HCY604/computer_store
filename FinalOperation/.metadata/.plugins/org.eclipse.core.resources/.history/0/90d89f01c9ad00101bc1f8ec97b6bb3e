@@ -1,0 +1,69 @@
+package dao.impl;
+
+
+import util.DbConnection;
+import vo.PayrollDueVo;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import dao.ReportPayDao;
+
+public class ReportPayDaoImpl implements ReportPayDao {
+
+    @Override
+    public int getCompanyBalance() {
+        String sql = "SELECT balance FROM fund_balance WHERE id=1";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (Exception ignore) {}
+        return 0;
+    }
+
+    @Override
+    public List<PayrollDueVo> listPayrollDue() {
+        List<PayrollDueVo> list = new ArrayList<PayrollDueVo>();
+        // 計算：已工作秒數（未下班用 NOW）、應付（秒數*rate）、已發（把 PAYROLL 負數轉正求和）、未結（應付-已發）
+        String sql =
+            "SELECT e.id, e.emp_code, e.name, e.is_admin, e.rate_per_sec, e.active, " +
+            " COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) AS secs, " +
+            " (COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) * e.rate_per_sec) AS should_pay, " +
+            " COALESCE((SELECT -SUM(t.amount) FROM fund_txn t WHERE t.txn_type='PAYROLL' AND t.ref_id=e.id),0) AS paid_total " +
+            "FROM employee e " +
+            "LEFT JOIN attendance a ON a.emp_id = e.id " +
+            "GROUP BY e.id, e.emp_code, e.name, e.is_admin, e.rate_per_sec, e.active " +
+            "ORDER BY e.id";
+
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                PayrollDueVo v = new PayrollDueVo();
+                v.setId(rs.getInt("id"));
+                v.setEmpCode(rs.getString("emp_code"));
+                v.setName(rs.getString("name"));
+                v.setAdmin(rs.getBoolean("is_admin"));
+                v.setRatePerSec(rs.getInt("rate_per_sec"));
+                v.setActive(rs.getBoolean("active"));
+
+                int secs   = rs.getInt("secs");
+                int should = rs.getInt("should_pay");
+                int paid   = rs.getInt("paid_total");
+                int due    = should - paid;
+
+                v.setSecondsWorked(secs);
+                v.setShouldPay(should);
+                v.setPaidAmount(paid);
+                v.setDueAmount(due);
+
+                list.add(v);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("listPayrollDue failed: " + e.getMessage(), e);
+        }
+        return list;
+    }
+}

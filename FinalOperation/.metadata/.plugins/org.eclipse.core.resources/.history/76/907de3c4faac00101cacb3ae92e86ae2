@@ -1,0 +1,9 @@
+package dao;
+
+import vo.DailyFinanceVo;
+import java.util.List;
+
+public interface ReportDao {
+    /** 最近 N 天：營收 / 進貨 / 人事 / 淨利（依日彙總） */
+    List<DailyFinanceVo> listDailyFinance(int lastNDays);
+}

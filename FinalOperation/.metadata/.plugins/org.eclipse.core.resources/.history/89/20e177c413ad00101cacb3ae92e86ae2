@@ -1,0 +1,100 @@
+package util;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import javax.swing.*;
+import java.io.FileOutputStream;
+import java.sql.*;
+import java.text.SimpleDateFormat;
+
+public class ExcelExporter {
+
+    public static void exportAll() {
+        try (Workbook wb = new XSSFWorkbook()) {
+            exportSummary(wb);
+            exportFundTxn(wb);
+            exportTopProducts(wb);
+
+            JFileChooser fc = new JFileChooser();
+            fc.setSelectedFile(new java.io.File("report.xlsx"));
+            if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+                try (FileOutputStream out = new FileOutputStream(fc.getSelectedFile())) {
+                    wb.write(out);
+                }
+                JOptionPane.showMessageDialog(null, "Excel 匯出完成！");
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "匯出失敗：" + e.getMessage());
+        }
+    }
+
+    private static void exportSummary(Workbook wb) throws Exception {
+        Sheet sh = wb.createSheet("Summary");
+        Row r0 = sh.createRow(0); r0.createCell(0).setCellValue("指標"); r0.createCell(1).setCellValue("金額");
+
+        String sql = """
+           SELECT
+             (SELECT IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='SALE')                                  AS revenue,
+             (SELECT -IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='PROCURE')                             AS procure_cost,
+             (SELECT -IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='PAYROLL')                             AS payroll_cost,
+             (SELECT balance FROM fund_balance WHERE id=1)                                                      AS balance
+        """;
+        try (Connection c = DbConnection.getDb(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                int revenue = rs.getInt("revenue");
+                int pc = rs.getInt("procure_cost");
+                int pay = rs.getInt("payroll_cost");
+                int bal = rs.getInt("balance");
+                int net = revenue - pc - pay;
+
+                String[] keys = {"總營收","採購成本","人事成本","淨利潤","公司現金"};
+                int[] vals = {revenue, pc, pay, net, bal};
+                for (int i=0;i<keys.length;i++){
+                    Row r = sh.createRow(i+1);
+                    r.createCell(0).setCellValue(keys[i]);
+                    r.createCell(1).setCellValue(vals[i]);
+                }
+            }
+        }
+        sh.autoSizeColumn(0); sh.autoSizeColumn(1);
+    }
+
+    private static void exportFundTxn(Workbook wb) throws Exception {
+        Sheet sh = wb.createSheet("FundTxn");
+        Row r0 = sh.createRow(0);
+        String[] h = {"ID","Type","Amount","Memo","RefId","Time"};
+        for (int i=0;i<h.length;i++) r0.createCell(i).setCellValue(h[i]);
+
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement("SELECT id,txn_type,amount,memo,IFNULL(ref_id,''),created_at FROM fund_txn ORDER BY id");
+             ResultSet rs = ps.executeQuery()) {
+            int row=1;
+            while (rs.next()){
+                Row r = sh.createRow(row++);
+                for (int i=0;i<6;i++) r.createCell(i).setCellValue(rs.getString(i+1));
+            }
+        }
+        for (int i=0;i<6;i++) sh.autoSizeColumn(i);
+    }
+
+    private static void exportTopProducts(Workbook wb) throws Exception {
+        Sheet sh = wb.createSheet("TopProducts");
+        Row r0 = sh.createRow(0);
+        r0.createCell(0).setCellValue("商品"); r0.createCell(1).setCellValue("數量"); r0.createCell(2).setCellValue("金額");
+
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT product_name,SUM(quantity) q,SUM(line_total) amt FROM goods GROUP BY product_name ORDER BY amt DESC");
+             ResultSet rs = ps.executeQuery()) {
+            int row=1;
+            while (rs.next()){
+                Row r = sh.createRow(row++);
+                r.createCell(0).setCellValue(rs.getString(1));
+                r.createCell(1).setCellValue(rs.getInt(2));
+                r.createCell(2).setCellValue(rs.getInt(3));
+            }
+        }
+        sh.autoSizeColumn(0); sh.autoSizeColumn(1); sh.autoSizeColumn(2);
+    }
+}

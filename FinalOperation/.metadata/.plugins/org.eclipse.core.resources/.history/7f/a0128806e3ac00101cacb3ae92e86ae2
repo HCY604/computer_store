@@ -1,0 +1,154 @@
+package dao.impl;
+
+import dao.ProductDao;
+import model.Product;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ProductDaoImpl implements ProductDao {
+
+    @Override
+    public List<String> listCategories() {
+        String sql = "SELECT category_name FROM product_category ORDER BY id";
+        List<String> list = new ArrayList<>();
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(rs.getString(1));
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    @Override
+    public List<Product> listByCategory(String categoryName) {
+        String sql = "SELECT p.id, p.category_id, c.category_name, p.product_name, p.shelf_price, p.stock_qty, p.reorder_point " +
+                     "FROM product p JOIN product_category c ON c.id = p.category_id " +
+                     "WHERE c.category_name=? ORDER BY p.product_name";
+        List<Product> list = new ArrayList<>();
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, categoryName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(map(rs));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    @Override
+    public List<Product> listNeedRestock() {
+        // 直接查 view：v_product_need_restock（已在 SQL 腳本建立）
+        String sql = "SELECT id, category_name, product_name, shelf_price, stock_qty, reorder_point FROM v_product_need_restock";
+        List<Product> list = new ArrayList<>();
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Product p = new Product();
+                p.setId(rs.getInt("id"));
+                p.setCategoryName(rs.getString("category_name"));
+                p.setProductName(rs.getString("product_name"));
+                p.setShelfPrice(rs.getInt("shelf_price"));
+                p.setStockQty(rs.getInt("stock_qty"));
+                p.setReorderPoint(rs.getInt("reorder_point"));
+                list.add(p);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    @Override
+    public Product findById(int id) {
+        String sql = "SELECT p.id, p.category_id, c.category_name, p.product_name, p.shelf_price, p.stock_qty, p.reorder_point " +
+                     "FROM product p JOIN product_category c ON c.id = p.category_id WHERE p.id=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return map(rs);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    @Override
+    public Product findByName(String productName) {
+        String sql = "SELECT p.id, p.category_id, c.category_name, p.product_name, p.shelf_price, p.stock_qty, p.reorder_point " +
+                     "FROM product p JOIN product_category c ON c.id = p.category_id WHERE p.product_name=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, productName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return map(rs);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    @Override
+    public void insert(Product p) {
+        String sql = "INSERT INTO product(category_id, product_name, shelf_price, stock_qty, reorder_point) VALUES(?,?,?,?,?)";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, p.getCategoryId());
+            ps.setString(2, p.getProductName());
+            ps.setInt(3, p.getShelfPrice());
+            ps.setInt(4, p.getStockQty());
+            ps.setInt(5, p.getReorderPoint());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) p.setId(rs.getInt(1));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public void updatePrice(int productId, int newPrice) {
+        String sql = "UPDATE product SET shelf_price=? WHERE id=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, newPrice);
+            ps.setInt(2, productId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public void updateStock(int productId, int newQty) {
+        String sql = "UPDATE product SET stock_qty=? WHERE id=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, newQty);
+            ps.setInt(2, productId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public boolean increaseStock(int productId, int qty) {
+        String sql = "UPDATE product SET stock_qty = stock_qty + ? WHERE id=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, qty);
+            ps.setInt(2, productId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    @Override
+    public boolean decreaseStock(int productId, int qty) {
+        String sql = "UPDATE product SET stock_qty = stock_qty - ? WHERE id=? AND stock_qty >= ?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, qty);
+            ps.setInt(2, productId);
+            ps.setInt(3, qty);
+            return ps.executeUpdate() > 0; // 庫存不足→不更新→回 false
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    private Product map(ResultSet rs) throws SQLException {
+        Product p = new Product();
+        p.setId(rs.getInt("id"));
+        p.setCategoryId(rs.getInt("category_id"));
+        p.setCategoryName(rs.getString("category_name"));
+        p.setProductName(rs.getString("product_name"));
+        p.setShelfPrice(rs.getInt("shelf_price"));
+        p.setStockQty(rs.getInt("stock_qty"));
+        p.setReorderPoint(rs.getInt("reorder_point"));
+        return p;
+    }
+}

@@ -1,0 +1,50 @@
+package dao.impl;
+
+import dao.FundDao;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class FundDaoImpl implements FundDao {
+    @Override
+    public int getBalance() {
+        String sql = "SELECT balance FROM fund_balance WHERE id=1";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取資金餘額失敗：" + e.getMessage(), e);
+        }
+        return 0;
+    }
+
+    @Override
+    public void addTxn(String type, int amount, String memo, Integer refId) {
+        String t1 = "INSERT INTO fund_txn(txn_type,amount,memo,ref_id) VALUES (?,?,?,?)";
+        String t2 = "UPDATE fund_balance SET balance = balance + ? WHERE id=1";
+        try (Connection c = DbConnection.getDb()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps1 = c.prepareStatement(t1);
+                 PreparedStatement ps2 = c.prepareStatement(t2)) {
+                ps1.setString(1, type);
+                ps1.setInt(2, amount);
+                ps1.setString(3, memo);
+                if (refId == null) ps1.setNull(4, Types.INTEGER); else ps1.setInt(4, refId);
+                ps1.executeUpdate();
+
+                ps2.setInt(1, amount);
+                ps2.executeUpdate();
+
+                c.commit();
+            } catch (Exception ex) {
+                c.rollback();
+                throw ex;
+            } finally {
+                c.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("新增資金交易失敗：" + e.getMessage(), e);
+        }
+    }
+}

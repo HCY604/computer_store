@@ -1,0 +1,68 @@
+package dao.impl;
+
+import dao.EmployeeDao;
+import model.Employee;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class EmployeeDaoImpl implements EmployeeDao {
+
+    @Override
+    public Employee login(String username, String password) {
+        String sql = "SELECT id,name,emp_code,username,password,phone,active FROM employee WHERE username=? AND password=? AND active=1";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Employee e = new Employee();
+                    e.setId(rs.getInt("id"));
+                    e.setName(rs.getString("name"));
+                    e.setEmpCode(rs.getString("emp_code"));
+                    e.setUsername(rs.getString("username"));
+                    e.setPassword(rs.getString("password"));
+                    e.setPhone(rs.getString("phone"));
+                    e.setActive(rs.getBoolean("active"));
+                    return e;
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    @Override
+    public void register(Employee e) {
+        String sql = "INSERT INTO employee(name,emp_code,username,password,phone,active) VALUES(?,?,?,?,?,?)";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, e.getName());
+            ps.setString(2, e.getEmpCode());
+            ps.setString(3, e.getUsername());
+            ps.setString(4, e.getPassword());
+            ps.setString(5, e.getPhone());
+            ps.setBoolean(6, e.isActive());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) e.setId(rs.getInt(1)); }
+        } catch (SQLException ex) { ex.printStackTrace(); }
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT 1 FROM employee WHERE username=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return true;
+    }
+
+    @Override
+    public boolean existsByEmpCode(String empCode) {
+        String sql = "SELECT 1 FROM employee WHERE emp_code=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, empCode);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return true;
+    }
+}

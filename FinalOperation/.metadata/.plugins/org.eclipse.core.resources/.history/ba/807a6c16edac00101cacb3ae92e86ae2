@@ -1,0 +1,12 @@
+package service.impl;
+
+import dao.ProcurementDao;
+import dao.impl.ProcurementDaoImpl;
+import service.ProcurementService;
+
+public class ProcurementServiceImpl implements ProcurementService {
+    private final ProcurementDao dao = new ProcurementDaoImpl();
+    @Override public boolean procure(int adminEmpId, int productId, int quantity) {
+        return dao.procure(adminEmpId, productId, quantity);
+    }
+}

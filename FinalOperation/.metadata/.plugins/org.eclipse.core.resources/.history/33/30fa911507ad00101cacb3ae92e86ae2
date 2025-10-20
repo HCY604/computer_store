@@ -1,0 +1,53 @@
+package model;
+
+public class Employee {
+    private Integer id;
+    private String empCode;
+    private String name;
+    private String phone;
+    private boolean admin;
+    private String adminPin;
+    private boolean active;
+	public Integer getId() {
+		return id;
+	}
+	public void setId(Integer id) {
+		this.id = id;
+	}
+	public String getEmpCode() {
+		return empCode;
+	}
+	public void setEmpCode(String empCode) {
+		this.empCode = empCode;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public String getPhone() {
+		return phone;
+	}
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+	public boolean isAdmin() {
+		return admin;
+	}
+	public void setAdmin(boolean admin) {
+		this.admin = admin;
+	}
+	public String getAdminPin() {
+		return adminPin;
+	}
+	public void setAdminPin(String adminPin) {
+		this.adminPin = adminPin;
+	}
+	public boolean isActive() {
+		return active;
+	}
+	public void setActive(boolean active) {
+		this.active = active;
+	}
+}

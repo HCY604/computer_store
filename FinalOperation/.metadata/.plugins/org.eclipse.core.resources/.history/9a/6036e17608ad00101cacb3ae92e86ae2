@@ -1,0 +1,41 @@
+package controller;
+
+import service.AttendanceService;
+import service.FundService;
+import service.impl.AttendanceServiceImpl;
+import service.impl.FundServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class PayrollSettlementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Runnable onAfter;
+
+    public PayrollSettlementUi(Runnable onAfter) {
+        this.onAfter = onAfter;
+        setSize(420, 180);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "薪資結清");
+        UiKit.createBackButton(this, e -> { if (onAfter!=null) onAfter.run(); dispose(); });
+
+        JButton btn = new JButton("結清所有未結清工時");
+        btn.setBounds(100,60,220,28); add(btn);
+        btn.addActionListener(e -> doSettle());
+    }
+
+    private void doSettle() {
+        AttendanceService as = new AttendanceServiceImpl();
+        int amount = as.settleAndReturnAmount(); // 每秒 $1
+        if (amount<=0){ JOptionPane.showMessageDialog(this,"無需結清"); return; }
+        FundService fs = new FundServiceImpl();
+        fs.addTxn("PAYROLL", -amount, "薪資結清", null);
+        fs.addExpense(amount);
+        JOptionPane.showMessageDialog(this,"本次結清人事成本 $"+amount);
+        if (onAfter!=null) onAfter.run();
+        dispose();
+    }
+}

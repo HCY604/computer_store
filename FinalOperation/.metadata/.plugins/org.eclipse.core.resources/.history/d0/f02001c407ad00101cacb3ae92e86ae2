@@ -1,0 +1,57 @@
+package dao.impl;
+
+import dao.AttendanceDao;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class AttendanceDaoImpl implements AttendanceDao {
+    @Override
+    public int clockIn(int empId) {
+        String sql = "INSERT INTO attendance_log(emp_id, clock_in) VALUES(?, NOW())";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, empId);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("打卡上班失敗：" + e.getMessage(), e);
+        }
+        return 0;
+    }
+
+    @Override
+    public void clockOut(int logId) {
+        String sql = "UPDATE attendance_log " +
+                     "SET clock_out=NOW(), seconds_worked = TIMESTAMPDIFF(SECOND, clock_in, NOW()) " +
+                     "WHERE id=? AND clock_out IS NULL";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, logId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("打卡下班失敗：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public int settleUnpaidAndReturnAmount() {
+        // 以秒薪1元，把未結清的全部結清
+        String sumSql = "SELECT IFNULL(SUM(seconds_worked),0) FROM attendance_log WHERE is_paid=0 AND clock_out IS NOT NULL";
+        String updSql = "UPDATE attendance_log SET is_paid=1 WHERE is_paid=0 AND clock_out IS NOT NULL";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement s1 = c.prepareStatement(sumSql);
+             ResultSet rs = s1.executeQuery()) {
+            int total = 0;
+            if (rs.next()) total = rs.getInt(1);
+            try (PreparedStatement s2 = c.prepareStatement(updSql)) {
+                s2.executeUpdate();
+            }
+            return total; // 每秒 $1
+        } catch (SQLException e) {
+            throw new RuntimeException("薪資結清失敗：" + e.getMessage(), e);
+        }
+    }
+}

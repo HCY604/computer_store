@@ -1,0 +1,64 @@
+package dao.impl;
+
+import dao.ProductDao;
+import model.Product;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ProductDaoImpl implements ProductDao {
+
+    private Product map(ResultSet rs) throws SQLException {
+        Product p = new Product();
+        p.setId(rs.getInt("id"));
+        p.setCategory(rs.getString("category"));
+        p.setName(rs.getString("name"));
+        p.setPrice(rs.getInt("price"));
+        p.setStock(rs.getInt("stock"));
+        return p;
+    }
+
+    @Override
+    public List<Product> findAll() {
+        String sql = "SELECT id,category,name,price,stock FROM product ORDER BY category, name";
+        List<Product> list = new ArrayList<>();
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(map(rs));
+        } catch (SQLException e) {
+            throw new RuntimeException("查詢產品失敗：" + e.getMessage(), e);
+        }
+        return list;
+    }
+
+    @Override
+    public Product findById(int id) {
+        String sql = "SELECT id,category,name,price,stock FROM product WHERE id=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return map(rs);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("查詢產品失敗：" + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    @Override
+    public void updateStock(int productId, int delta) {
+        String sql = "UPDATE product SET stock = stock + ? WHERE id=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, delta);
+            ps.setInt(2, productId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("更新庫存失敗：" + e.getMessage(), e);
+        }
+    }
+}

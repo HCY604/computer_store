@@ -1,0 +1,55 @@
+package controller;
+
+import model.Employee;
+import model.TimeSummary;
+import service.TimeLogService;
+import service.impl.TimeLogServiceImpl;
+import util.Tool;
+
+import javax.swing.*;
+
+public class EmployeePanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final TimeLogService timeSvc = new TimeLogServiceImpl();
+
+    public EmployeePanel() {
+        Employee emp = Tool.loadEmployee();
+        setTitle("員工介面 - " + (emp!=null ? emp.getName()+"（"+emp.getEmpCode()+"）" : "未登入"));
+        setSize(480, 300);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel lblInfo = new JLabel(emp!=null ? ("歡迎，" + emp.getName() + "（" + emp.getEmpCode() + "）") : "未登入");
+        lblInfo.setBounds(20, 20, 420, 24); add(lblInfo);
+
+        JButton btnIn  = new JButton("上班打卡"); btnIn.setBounds(20, 70, 120, 28); add(btnIn);
+        JButton btnOut = new JButton("下班打卡"); btnOut.setBounds(160, 70, 120, 28); add(btnOut);
+        JButton btnSum = new JButton("查看未結薪資"); btnSum.setBounds(300, 70, 140, 28); add(btnSum);
+
+        JButton btnAdmin = new JButton("登入管理員"); btnAdmin.setBounds(20, 120, 120, 28); add(btnAdmin);
+        JButton btnBack  = new JButton("返回主選單"); btnBack.setBounds(160, 120, 120, 28); add(btnBack);
+        JButton btnLogout= new JButton("員工登出"); btnLogout.setBounds(300, 120, 120, 28); add(btnLogout);
+
+        btnIn.addActionListener(e -> {
+            if (emp==null) return;
+            if (timeSvc.startShift(emp.getId())) JOptionPane.showMessageDialog(this, "上班打卡成功");
+            else JOptionPane.showMessageDialog(this, "已有尚未結束的班次");
+        });
+        btnOut.addActionListener(e -> {
+            if (emp==null) return;
+            if (timeSvc.stopShift(emp.getId())) JOptionPane.showMessageDialog(this, "下班打卡成功（已計算秒薪）");
+            else JOptionPane.showMessageDialog(this, "沒有開啟中的班次");
+        });
+        btnSum.addActionListener(e -> {
+            if (emp==null) return;
+            TimeSummary s = timeSvc.sumUnpaid(emp.getId());
+            JOptionPane.showMessageDialog(this, "未結清：秒數 " + s.getTotalSeconds() + "、金額 $" + s.getTotalAmount());
+        });
+
+        btnAdmin.addActionListener(e -> { new AdminLogin(this).setVisible(true); setVisible(false); });
+        btnBack.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+        btnLogout.addActionListener(e -> { Tool.clearEmployee(); new RoleSelector().setVisible(true); dispose(); });
+    }
+}

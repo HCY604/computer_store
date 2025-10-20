@@ -1,0 +1,25 @@
+package controller;
+
+import util.UiKit;
+
+import javax.swing.*;
+
+public class RoleSelector extends JFrame {
+    private static final long serialVersionUID = 1L;
+    public RoleSelector(){
+        setSize(360,200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this,"選擇角色");
+
+        JButton m = new JButton("會員登入");
+        m.setBounds(40,70,120,30);
+        JButton e = new JButton("員工登入");
+        e.setBounds(190,70,120,30);
+        add(m); add(e);
+
+        m.addActionListener(a -> { new MemberLogin(this).setVisible(true); setVisible(false);});
+        e.addActionListener(a -> { new EmployeeLogin(this).setVisible(true); setVisible(false);});
+    }
+}

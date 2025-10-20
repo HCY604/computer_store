@@ -1,0 +1,7 @@
+package dao;
+
+public interface FundDao {
+    int  getBalance();
+    void addIncome(int amount);   // 銷售入帳（餘額 += amount）
+    void addExpense(int amount);  // 採購/薪資支出（餘額 -= amount）
+}

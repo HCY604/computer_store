@@ -1,0 +1,9 @@
+package service;
+
+public interface ProcurementService {
+    /**
+     * 以「售價 70%」為成本採購：更新庫存、扣管理員資金、寫入採購與庫存異動。
+     * @return true=成功, false=資金不足或其他失敗
+     */
+    boolean procure(int adminId, int productId, int quantity);
+}

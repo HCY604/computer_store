@@ -1,0 +1,40 @@
+package controller;
+
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class FireEmployeeUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JTextField tId;
+
+    public FireEmployeeUi() {
+        setSize(360, 180);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "開除員工");
+        UiKit.createBackButton(this, e -> dispose());
+
+        JLabel l=new JLabel("員工ID："); l.setBounds(40,60,80,24); add(l);
+        tId=new JTextField(); tId.setBounds(100,60,140,24); add(tId);
+
+        JButton btn=new JButton("開除"); btn.setBounds(250,60,80,24); add(btn);
+        btn.addActionListener(e -> doFire());
+    }
+
+    private void doFire() {
+        try {
+            int id = Integer.parseInt(tId.getText().trim());
+            EmployeeService svc = new EmployeeServiceImpl();
+            svc.fire(id);
+            JOptionPane.showMessageDialog(this,"已停用員工ID="+id);
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,"格式錯誤或失敗："+ex.getMessage());
+        }
+    }
+}

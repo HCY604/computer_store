@@ -1,0 +1,109 @@
+package controller;
+
+import model.Goods;
+import model.Member;
+import model.Product;
+import service.FundService;
+import service.GoodsService;
+import service.ProductService;
+import service.impl.FundServiceImpl;
+import service.impl.GoodsServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.ChangeTool;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.print.PrinterException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+public class OrderConfirmWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final Member m;
+    private final GoodsService gsvc=new GoodsServiceImpl();
+    private final ProductService psvc=new ProductServiceImpl();
+    private final FundService fsvc=new FundServiceImpl();
+
+    private DefaultTableModel model;
+    private JTable table;
+    private JLabel lbl;
+
+    public OrderConfirmWindow(JFrame back, Member m, List<Object[]> rows){
+        this.back=back; this.m=m;
+        setSize(820,620); setLocationRelativeTo(null); setLayout(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        UiKit.attachClockToTitle(this,"確認訂單");
+        UiKit.createBackButton(this, e->{ back.setVisible(true); dispose(); });
+
+        model=new DefaultTableModel(new String[]{"類別","商品","單價","數量","小計"},0){ @Override public boolean isCellEditable(int r,int c){ return false; }};
+        table=new JTable(model);
+        JScrollPane sp=new JScrollPane(table); sp.setBounds(20,60,760,480); add(sp);
+        for(Object[] r: rows) model.addRow(r);
+
+        lbl=new JLabel(); lbl.setBounds(20,20,300,26); lbl.setFont(lbl.getFont().deriveFont(Font.BOLD,14f)); add(lbl);
+        updateTotal();
+
+        JButton del=new JButton("刪除選取"); del.setBounds(20,550,110,28); add(del);
+        JButton backBtn=new JButton("返回購物車"); backBtn.setBounds(540,550,120,28); add(backBtn);
+        JButton ok=new JButton("確認下單並列印"); ok.setBounds(670,550,120,28); add(ok);
+
+        del.addActionListener(e-> { int r=table.getSelectedRow(); if(r>=0){ model.removeRow(r); updateTotal(); } });
+        backBtn.addActionListener(e-> { back.setVisible(true); dispose(); });
+        ok.addActionListener(e-> place());
+    }
+
+    private void updateTotal(){
+        int sum=0; for(int i=0;i<model.getRowCount();i++) sum+=(int)model.getValueAt(i,4);
+        lbl.setText("總金額：$"+sum);
+    }
+
+    private void place(){
+        if(model.getRowCount()==0){ JOptionPane.showMessageDialog(this,"購物車是空的"); return; }
+        int total=0; for(int i=0;i<model.getRowCount();i++) total+=(int)model.getValueAt(i,4);
+
+        String money=JOptionPane.showInputDialog(this,"付款金額", String.valueOf(total));
+        if(money==null) return;
+        int cash; try{ cash=Integer.parseInt(money.trim()); }catch(Exception ex){ JOptionPane.showMessageDialog(this,"金額格式錯誤"); return; }
+        if(cash<total){ JOptionPane.showMessageDialog(this,"金額不足"); return; }
+        int change=cash-total;
+
+        // 二次庫存檢查
+        for(int i=0;i<model.getRowCount();i++){
+            String name=(String)model.getValueAt(i,1); int qty=(int)model.getValueAt(i,3);
+            Product p=psvc.findByName(name); if(p==null||p.getStock()<qty){ JOptionPane.showMessageDialog(this,"庫存不足："+name); return; }
+        }
+        // 寫 goods + 扣庫存
+        for(int i=0;i<model.getRowCount();i++){
+            String cat=(String)model.getValueAt(i,0); String name=(String)model.getValueAt(i,1);
+            int price=(int)model.getValueAt(i,2); int qty=(int)model.getValueAt(i,3); int line=(int)model.getValueAt(i,4);
+            Goods g=new Goods(); g.setMemberId(m.getId()); g.setCategoryName(cat); g.setProductName(name);
+            g.setUnitPrice(price); g.setQuantity(qty); g.setLineTotal(line);
+            g.setOrderTotal(total); g.setPaidCash(cash); g.setChangeAmount(change);
+            gsvc.save(g);
+            Product p=psvc.findByName(name); if(p!=null) psvc.changeStock(p.getId(), -qty);
+        }
+        // 資金入帳（營收）
+        fsvc.addTxn("SALE", total, "銷售收入", null);
+
+        JOptionPane.showMessageDialog(this,"結帳完成！\n"+ util.ChangeTool.breakdown(change));
+        try {
+            table.print(JTable.PrintMode.FIT_WIDTH,
+                    new MessageFormat("購買清單（總額 $"+total+"）"),
+                    new MessageFormat("列印時間：{0,date,yyyy-MM-dd HH:mm:ss}"));
+        } catch (PrinterException e) { JOptionPane.showMessageDialog(this,"列印失敗："+e.getMessage()); }
+
+        back.setVisible(true); dispose();
+    }
+
+    public static java.util.List<Object[]> dumpRows(JTable t){
+        java.util.List<Object[]> list=new ArrayList<>();
+        var m=(DefaultTableModel)t.getModel();
+        for(int i=0;i<m.getRowCount();i++)
+            list.add(new Object[]{m.getValueAt(i,0),m.getValueAt(i,1),m.getValueAt(i,2),m.getValueAt(i,3),m.getValueAt(i,4)});
+        return list;
+    }
+}

@@ -1,0 +1,88 @@
+package controller;
+
+import model.Employee;
+import service.FundService;
+import service.ReportService;
+import service.impl.FundServiceImpl;
+import service.impl.ReportServiceImpl;
+import vo.DailyProfitVo;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
+
+import javax.swing.*;
+import java.awt.*;
+import java.util.List;
+
+public class AdminPanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Employee adminEmp;
+    private final JFrame employeeBackFrame;
+
+    private final FundService fundSvc = new FundServiceImpl();
+    private final ReportService reportSvc = new ReportServiceImpl();
+
+    private JLabel lblBalance;
+    private JPanel chartPanel;
+
+    public AdminPanel(Employee adminEmp, JFrame employeeBackFrame) {
+        this.adminEmp = adminEmp;
+        this.employeeBackFrame = employeeBackFrame;
+        buildUi();
+    }
+
+    private void buildUi() {
+        setTitle("管理員面板 - " + adminEmp.getName() + "（" + adminEmp.getEmpCode() + "）");
+        setSize(1000, 720);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        lblBalance = new JLabel("公司資金餘額：" + fundSvc.getBalance());
+        lblBalance.setBounds(20, 20, 300, 24); add(lblBalance);
+
+        JButton btnProcure   = new JButton("採購進貨");     btnProcure.setBounds(20, 60, 120, 28); add(btnProcure);
+        JButton btnHire      = new JButton("新增員工");     btnHire.setBounds(150, 60, 120, 28); add(btnHire);
+        JButton btnFire      = new JButton("開除員工");     btnFire.setBounds(280, 60, 120, 28); add(btnFire);
+        JButton btnPayroll   = new JButton("薪資結清");     btnPayroll.setBounds(410, 60, 120, 28); add(btnPayroll);
+        JButton btnRefresh   = new JButton("刷新圖表");     btnRefresh.setBounds(540, 60, 120, 28); add(btnRefresh);
+        JButton btnBackEmp   = new JButton("返回員工介面"); btnBackEmp.setBounds(670, 60, 140, 28); add(btnBackEmp);
+        JButton btnLogoutAll = new JButton("登出到主選單"); btnLogoutAll.setBounds(820, 60, 150, 28); add(btnLogoutAll);
+
+        chartPanel = new JPanel(new BorderLayout());
+        chartPanel.setBounds(20, 110, 950, 560);
+        chartPanel.setBorder(BorderFactory.createTitledBorder("營收 / 進貨 / 毛利（最近 30 天）"));
+        add(chartPanel);
+
+        btnProcure.addActionListener(e -> new ProcurementUi(adminEmp, this::refreshBalance).setVisible(true));
+        btnHire.addActionListener(e -> new HireEmployeeUi(this::refreshBalance).setVisible(true));
+        btnFire.addActionListener(e -> new FireEmployeeUi(this::refreshBalance).setVisible(true));
+        btnPayroll.addActionListener(e -> new PayrollSettlementUi(this::refreshBalance).setVisible(true));
+        btnRefresh.addActionListener(e -> drawChart());
+        btnBackEmp.addActionListener(e -> { if (employeeBackFrame!=null) { employeeBackFrame.setVisible(true); dispose(); } else { new EmployeePanel().setVisible(true); dispose(); }});
+        btnLogoutAll.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+
+        drawChart();
+    }
+
+    private void refreshBalance() { lblBalance.setText("公司資金餘額：" + fundSvc.getBalance()); }
+
+    private void drawChart() {
+        List<DailyProfitVo> data = reportSvc.listDailyProfit(30);
+        DefaultCategoryDataset ds = new DefaultCategoryDataset();
+        for (DailyProfitVo v : data) {
+            ds.addValue(v.getSalesAmount(), "營收", v.getBizDate());
+            ds.addValue(v.getProcureCost(), "進貨成本", v.getBizDate());
+            ds.addValue(v.getGrossProfit(), "毛利", v.getBizDate());
+        }
+        JFreeChart chart = ChartFactory.createLineChart("每日營收/進貨/毛利", "日期", "金額", ds);
+        ChartPanel cp = new ChartPanel(chart);
+        chartPanel.removeAll();
+        chartPanel.add(cp, BorderLayout.CENTER);
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+}

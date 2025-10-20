@@ -1,0 +1,96 @@
+package controller;
+
+import model.Employee;
+import service.AttendanceService;
+import service.EmployeeService;
+import service.FundService;
+import service.impl.AttendanceServiceImpl;
+import service.impl.EmployeeServiceImpl;
+import service.impl.FundServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class EmployeeManageWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final EmployeeService esvc = new EmployeeServiceImpl();
+    private final AttendanceService asvc = new AttendanceServiceImpl();
+    private final FundService fsvc = new FundServiceImpl();
+
+    private JTable table;
+    private DefaultTableModel model;
+    private JTextField tCode,tName;
+    private JCheckBox ckAdmin;
+
+    public EmployeeManageWindow(JFrame back){
+        this.back=back;
+        setSize(820,560); setLocationRelativeTo(null); setLayout(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        UiKit.attachClockToTitle(this,"員工管理 / 發薪");
+        UiKit.createBackButton(this, e->{ back.setVisible(true); dispose(); });
+
+        String[] cols={"ID","編號","姓名","管理員","秒薪","在職"};
+        model=new DefaultTableModel(cols,0){ @Override public boolean isCellEditable(int r,int c){ return false; }};
+        table=new JTable(model);
+        JScrollPane sp=new JScrollPane(table); sp.setBounds(20,60,760,320); add(sp);
+
+        JLabel l1=new JLabel("編號："); l1.setBounds(20,400,40,24); add(l1);
+        tCode=new JTextField(); tCode.setBounds(60,400,120,24); add(tCode);
+        JLabel l2=new JLabel("姓名："); l2.setBounds(200,400,40,24); add(l2);
+        tName=new JTextField(); tName.setBounds(240,400,120,24); add(tName);
+        ckAdmin=new JCheckBox("管理員(秒薪10)"); ckAdmin.setBounds(380,400,140,24); add(ckAdmin);
+
+        JButton addBtn=new JButton("新增員工"); addBtn.setBounds(540,400,110,26); add(addBtn);
+        JButton fireBtn=new JButton("開除"); fireBtn.setBounds(660,400,120,26); add(fireBtn);
+
+        JButton payBtn=new JButton("發薪 (結清未付)"); payBtn.setBounds(20,440,180,30); add(payBtn);
+
+        addBtn.addActionListener(e->doAdd());
+        fireBtn.addActionListener(e->doFire());
+        payBtn.addActionListener(e->doPay());
+
+        reload();
+    }
+
+    private void reload(){
+        model.setRowCount(0);
+        for (Employee e: esvc.all()){
+            model.addRow(new Object[]{e.getId(),e.getEmpCode(),e.getName(),e.isAdmin(),e.getRatePerSec(),e.isActive()});
+        }
+    }
+
+    private void doAdd(){
+        String code=tCode.getText().trim(), name=tName.getText().trim();
+        if(code.isEmpty()||name.isEmpty()){ JOptionPane.showMessageDialog(this,"請輸入編號與姓名"); return; }
+        Employee e=new Employee();
+        e.setEmpCode(code); e.setName(name);
+        e.setAdmin(ckAdmin.isSelected());
+        e.setAdminPassword("123456");
+        e.setRatePerSec(ckAdmin.isSelected()?10:1);
+        try { esvc.add(e); JOptionPane.showMessageDialog(this,"新增完成"); reload(); }
+        catch(Exception ex){ JOptionPane.showMessageDialog(this,"編號可能重複"); }
+    }
+
+    private void doFire(){
+        int r=table.getSelectedRow(); if(r<0){ JOptionPane.showMessageDialog(this,"請選取員工"); return; }
+        int id=(int)model.getValueAt(r,0);
+        esvc.setActive(id,false);
+        JOptionPane.showMessageDialog(this,"已開除");
+        reload();
+    }
+
+    private void doPay(){
+        int r=table.getSelectedRow(); if(r<0){ JOptionPane.showMessageDialog(this,"請選取員工"); return; }
+        int id=(int)model.getValueAt(r,0);
+        int rate=(int)model.getValueAt(r,4);
+        int secs = asvc.calcUnsettledSeconds(id);
+        int money = secs * rate;
+        if (secs==0){ JOptionPane.showMessageDialog(this,"無未結清工時"); return; }
+        // 資金支出（薪資）
+        fsvc.addTxn("PAYROLL", -money, "薪資結清 empId="+id+" 秒數="+secs, id);
+        asvc.settle(id);
+        JOptionPane.showMessageDialog(this,"已發薪："+money+" 元");
+    }
+}

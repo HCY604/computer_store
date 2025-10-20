@@ -1,0 +1,31 @@
+package controller;
+
+import util.UiKit;
+
+import javax.swing.*;
+
+public class MainApp {
+    public static void main(String[] args) {
+        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception ignore) {}
+
+        JFrame menu = new JFrame();
+        menu.setSize(360, 220);
+        menu.setLocationRelativeTo(null);
+        menu.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        menu.setLayout(null);
+        UiKit.attachClockToTitle(menu, "測試入口（採購 / 報表）");
+
+        JButton btnProc = new JButton("開啟 採購介面");
+        btnProc.setBounds(40, 60, 130, 36);
+        menu.add(btnProc);
+
+        JButton btnReport = new JButton("開啟 報表介面");
+        btnReport.setBounds(190, 60, 130, 36);
+        menu.add(btnReport);
+
+        btnProc.addActionListener(e -> new ProcurementUi(() -> menu.setVisible(true)).setVisible(true));
+        btnReport.addActionListener(e -> new AdminReportDashboard(menu).setVisible(true));
+
+        menu.setVisible(true);
+    }
+}

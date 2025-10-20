@@ -1,0 +1,17 @@
+package util;
+
+import model.Member;
+import model.AdminUser;
+
+public class Tool {
+    private static Member currentMember;
+    private static AdminUser currentAdmin;
+
+    public static void saveMember(Member m){ currentMember = m; }
+    public static Member loadMember(){ return currentMember; }
+    public static void clearMember(){ currentMember = null; }
+
+    public static void saveAdmin(AdminUser a){ currentAdmin = a; }
+    public static AdminUser loadAdmin(){ return currentAdmin; }
+    public static void clearAdmin(){ currentAdmin = null; }
+}

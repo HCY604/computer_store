@@ -1,0 +1,14 @@
+package service;
+
+import java.util.List;
+import model.Product;
+
+public interface ProductService {
+    List<Product> findAll();
+
+    /** 依商品名稱找單筆（名稱唯一；若未設唯一，取第一筆） */
+    Product findByName(String name);
+
+    /** 變更庫存：delta 可正可負（正=進貨、負=銷售） */
+    void changeStock(int productId, int delta);
+}

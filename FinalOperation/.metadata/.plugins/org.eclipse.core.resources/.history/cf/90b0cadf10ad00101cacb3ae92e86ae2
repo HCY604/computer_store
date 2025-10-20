@@ -1,0 +1,27 @@
+package service.impl;
+
+import java.util.List;
+
+import dao.ProductDao;
+import dao.impl.ProductDaoImpl;
+import model.Product;
+import service.ProductService;
+
+public class ProductServiceImpl implements ProductService {
+    private final ProductDao productDao = new ProductDaoImpl();
+
+    @Override
+    public List<Product> findAll() {
+        return productDao.findAll();
+    }
+
+    @Override
+    public Product findByName(String name) {
+        return productDao.findByName(name);
+    }
+
+    @Override
+    public void changeStock(int productId, int delta) {
+        productDao.changeStock(productId, delta);
+    }
+}

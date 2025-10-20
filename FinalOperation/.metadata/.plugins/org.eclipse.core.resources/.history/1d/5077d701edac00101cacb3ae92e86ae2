@@ -1,0 +1,10 @@
+package service.impl;
+
+import dao.FundDao;
+import dao.impl.FundDaoImpl;
+import service.FundService;
+
+public class FundServiceImpl implements FundService {
+    private final FundDao dao = new FundDaoImpl();
+    @Override public int getBalance() { return dao.getBalance(); }
+}

@@ -1,0 +1,9 @@
+package service;
+
+import model.Goods;
+import java.util.List;
+
+public interface GoodsService {
+    void save(Goods goods);
+    List<Goods> findAll();
+}

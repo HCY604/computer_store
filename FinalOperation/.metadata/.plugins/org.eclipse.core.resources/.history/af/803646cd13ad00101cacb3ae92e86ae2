@@ -1,0 +1,101 @@
+package controller;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
+import util.ChartFont;
+import util.UiKit;
+
+import javax.swing.*;
+import java.awt.*;
+import java.sql.*;
+
+import util.DbConnection;
+
+public class ReportDashboard extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private JPanel chartArea;
+    private JLabel lblSummary;
+
+    public ReportDashboard(JFrame back){
+        this.back=back;
+        setSize(920,640); setLocationRelativeTo(null); setLayout(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        UiKit.attachClockToTitle(this,"營運報表");
+        UiKit.createBackButton(this, e->{ back.setVisible(true); dispose(); });
+
+        lblSummary=new JLabel(); lblSummary.setBounds(20,20,860,24); add(lblSummary);
+
+        String[] items={"營收/成本/淨利(長條圖-日)","商品銷售占比(圓餅)"};
+        JComboBox<String> cb=new JComboBox<>(items); cb.setBounds(20,50,240,26); add(cb);
+
+        chartArea=new JPanel(new BorderLayout()); chartArea.setBounds(20,85,860,500); add(chartArea);
+
+        cb.addActionListener(e-> render(cb.getSelectedIndex()));
+        refreshSummary();
+        render(0);
+    }
+
+    private void refreshSummary(){
+        String sql = """
+            SELECT
+              (SELECT IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='SALE') AS rev,
+              (SELECT -IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='PROCURE') AS pc,
+              (SELECT -IFNULL(SUM(amount),0) FROM fund_txn WHERE txn_type='PAYROLL') AS pay
+        """;
+        try (Connection c = DbConnection.getDb(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()){
+            if(rs.next()){
+                int rev=rs.getInt(1), pc=rs.getInt(2), pay=rs.getInt(3);
+                int net = rev - pc - pay;
+                lblSummary.setText("總營收："+rev+"  ｜ 採購成本："+pc+"  ｜ 人事成本："+pay+"  ｜ 淨利潤："+net);
+            }
+        } catch (Exception ex){ ex.printStackTrace(); }
+    }
+
+    private void render(int idx){
+        chartArea.removeAll();
+        if (idx==0) renderBar();
+        else renderPie();
+        chartArea.revalidate(); chartArea.repaint();
+    }
+
+    private void renderBar(){
+        DefaultCategoryDataset ds = new DefaultCategoryDataset();
+        // 以 fund_txn 日期彙總（日）
+        String sql = """
+          SELECT DATE(created_at) d,
+            SUM(CASE WHEN txn_type='SALE' THEN amount ELSE 0 END) AS revenue,
+            SUM(CASE WHEN txn_type='PROCURE' THEN -amount ELSE 0 END) AS procure_cost,
+            SUM(CASE WHEN txn_type='PAYROLL' THEN -amount ELSE 0 END) AS payroll_cost
+          FROM fund_txn GROUP BY DATE(created_at) ORDER BY d
+        """;
+        try (Connection c=DbConnection.getDb(); PreparedStatement ps=c.prepareStatement(sql); ResultSet rs=ps.executeQuery()){
+            while (rs.next()){
+                String d = rs.getString(1);
+                int rev=rs.getInt(2), pc=rs.getInt(3), pay=rs.getInt(4);
+                int net = rev - pc - pay;
+                ds.addValue(rev,"營收",d);
+                ds.addValue(pc,"採購成本",d);
+                ds.addValue(pay,"人事成本",d);
+                ds.addValue(net,"淨利潤",d);
+            }
+        } catch (Exception e){ e.printStackTrace(); }
+
+        var chart = ChartFactory.createBarChart("每日營收/成本/淨利", "日期", "金額", ds);
+        ChartFont.applyCJK(chart);
+        chartArea.add(new ChartPanel(chart), BorderLayout.CENTER);
+    }
+
+    private void renderPie(){
+        DefaultPieDataset<String> ds = new DefaultPieDataset<>();
+        String sql = "SELECT product_name,SUM(quantity) q FROM goods GROUP BY product_name";
+        try (Connection c=DbConnection.getDb(); PreparedStatement ps=c.prepareStatement(sql); ResultSet rs=ps.executeQuery()){
+            while (rs.next()) ds.setValue(rs.getString(1), rs.getInt(2));
+        } catch (Exception e){ e.printStackTrace(); }
+        var chart = ChartFactory.createPieChart("商品銷售占比", ds, true, true, false);
+        ChartFont.applyCJK(chart);
+        chartArea.add(new ChartPanel(chart), BorderLayout.CENTER);
+    }
+}

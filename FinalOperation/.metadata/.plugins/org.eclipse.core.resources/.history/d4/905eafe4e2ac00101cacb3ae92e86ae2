@@ -1,0 +1,8 @@
+package dao;
+
+import model.Goods;
+
+public interface GoodsDao {
+    void insert(Goods g);
+    void insertSaleTxn(int productId, int qty, long goodsId); // 庫存異動：SALE
+}

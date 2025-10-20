@@ -1,0 +1,25 @@
+package service.impl;
+
+import dao.GoodsDao;
+import dao.ProductDao;
+import dao.impl.GoodsDaoImpl;
+import dao.impl.ProductDaoImpl;
+import model.Goods;
+import model.Product;
+import service.GoodsService;
+
+public class GoodsServiceImpl implements GoodsService {
+    private final GoodsDao goodsDao = new GoodsDaoImpl();
+    private final ProductDao productDao = new ProductDaoImpl();
+
+    @Override
+    public void save(Goods g) {
+        goodsDao.insert(g);
+        // 依商品名稱扣庫存並記錄庫存異動
+        Product p = productDao.findByName(g.getProductName());
+        if (p != null) {
+            boolean ok = productDao.decreaseStock(p.getId(), g.getQuantity());
+            if (ok && g.getId()!=null) goodsDao.insertSaleTxn(p.getId(), g.getQuantity(), g.getId());
+        }
+    }
+}

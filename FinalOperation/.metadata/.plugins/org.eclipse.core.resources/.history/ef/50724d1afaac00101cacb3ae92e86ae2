@@ -1,0 +1,89 @@
+package util;
+
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.title.LegendTitle;
+import org.jfree.chart.plot.Plot;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.category.LineAndShapeRenderer;
+import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
+
+import java.awt.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+public class ChartKit {
+
+    /** 找一個系統可用的中文字型，避免顯示成方框 □□□ */
+    public static String pickCjkFont() {
+        String[] candidates = {
+            "Microsoft JhengHei","微軟正黑體","PingFang TC","Noto Sans CJK TC",
+            "PMingLiU","MingLiU","SimHei","SimSun","Heiti TC",
+            "Source Han Sans TC","WenQuanYi Zen Hei","Arial Unicode MS",
+            "Dialog","SansSerif"
+        };
+        Set<String> installed = new HashSet<>(
+            Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames())
+        );
+        for (String c : candidates) if (installed.contains(c)) return c;
+        return "Dialog";
+    }
+
+    /** 統一字型（標題/圖例/座標與標籤） */
+    public static void applyTheme(JFreeChart chart) {
+        String fontName = pickCjkFont();
+        Font titleFont  = new Font(fontName, Font.BOLD, 18);
+        Font axisFont   = new Font(fontName, Font.PLAIN, 12);
+        Font legendFont = new Font(fontName, Font.PLAIN, 12);
+        Font labelFont  = new Font(fontName, Font.PLAIN, 11);
+
+        if (chart.getTitle() != null) chart.getTitle().setFont(titleFont);
+        LegendTitle legend = chart.getLegend();
+        if (legend != null) legend.setItemFont(legendFont);
+
+        Plot p = chart.getPlot();
+        if (p instanceof CategoryPlot) {
+            CategoryPlot cp = (CategoryPlot) p;
+            if (cp.getDomainAxis() != null) {
+                CategoryAxis x = cp.getDomainAxis();
+                x.setTickLabelFont(axisFont);
+                x.setLabelFont(axisFont);
+            }
+            if (cp.getRangeAxis() != null) {
+                NumberAxis y = (NumberAxis) cp.getRangeAxis();
+                y.setTickLabelFont(axisFont);
+                y.setLabelFont(axisFont);
+                y.setAutoRangeIncludesZero(true);
+            }
+            cp.setBackgroundPaint(Color.WHITE);
+            cp.setRangeGridlinePaint(new Color(200,200,200));
+            cp.setDomainGridlinesVisible(false);
+
+            if (cp.getRenderer() instanceof LineAndShapeRenderer) {
+                LineAndShapeRenderer r = (LineAndShapeRenderer) cp.getRenderer();
+                r.setDefaultShapesVisible(true);              // 顯示圓點
+                r.setDefaultLinesVisible(true);               // 顯示線段
+                r.setDefaultItemLabelsVisible(true);          // 顯示數值標籤
+                r.setDefaultItemLabelGenerator(new StandardCategoryItemLabelGenerator());
+                r.setDefaultItemLabelFont(labelFont);
+                // 線條加粗
+                for (int i=0;i<8;i++) r.setSeriesStroke(i, new BasicStroke(2.0f));
+            } else if (cp.getRenderer() instanceof BarRenderer) {
+                BarRenderer br = (BarRenderer) cp.getRenderer();
+                br.setDefaultItemLabelsVisible(true);
+                br.setDefaultItemLabelGenerator(new StandardCategoryItemLabelGenerator());
+                br.setDefaultItemLabelFont(labelFont);
+                br.setMaximumBarWidth(0.2); // 別太寬
+            }
+        } else if (p instanceof PiePlot) {
+            PiePlot pp = (PiePlot) p;
+            pp.setLabelFont(labelFont);
+            pp.setSimpleLabels(true);
+            pp.setBackgroundPaint(Color.WHITE);
+        }
+    }
+}

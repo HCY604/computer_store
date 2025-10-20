@@ -1,0 +1,19 @@
+package dao;
+
+import model.Product;
+import java.util.List;
+
+public interface ProductDao {
+    List<String> listCategories();
+    List<Product> listByCategory(String categoryName);
+    List<Product> listNeedRestock();
+    Product findByName(String name);
+    Product findById(int id);
+
+    // 既有：調整庫存（相對增減）
+    boolean decreaseStock(int productId, int qty);
+    boolean increaseStock(int productId, int qty);
+
+    // ★新增：直接把庫存「設定」為某個數量（絕對值）
+    boolean updateStock(int productId, int newQty);
+}

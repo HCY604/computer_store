@@ -1,0 +1,5 @@
+package dao;
+
+public interface ProcurementDao {
+    void insert(int adminId, int productId, int quantity, int costUnit, int costTotal);
+}

@@ -1,0 +1,29 @@
+package util;
+
+import javax.swing.*;
+import java.awt.event.ActionListener;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class UiKit {
+    private static final DateTimeFormatter F = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /** 在視窗標題右側動態顯示時間（每秒更新） */
+    public static void attachClockToTitle(JFrame f, String baseTitle) {
+        f.setTitle(baseTitle + " - " + LocalDateTime.now().format(F));
+        Timer t = new Timer(1000, e -> f.setTitle(baseTitle + " - " + LocalDateTime.now().format(F)));
+        t.setRepeats(true);
+        t.start();
+        // 把 Timer 存在 client properties，避免被 GC
+        f.getRootPane().putClientProperty("clockTimer", t);
+    }
+
+    /** 產生一顆「返回上一頁」按鈕（null layout 預設位置） */
+    public static JButton createBackButton(JFrame f, ActionListener onBack) {
+        JButton btn = new JButton("← 返回");
+        btn.setBounds(10, 10, 80, 26);
+        btn.addActionListener(onBack);
+        f.add(btn);
+        return btn;
+    }
+}

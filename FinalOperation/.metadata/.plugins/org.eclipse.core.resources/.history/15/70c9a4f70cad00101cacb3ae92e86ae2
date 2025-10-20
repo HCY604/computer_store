@@ -1,0 +1,188 @@
+package controller;
+
+import model.Goods;
+import model.Member;
+import model.Product;
+import service.FundService;
+import service.GoodsService;
+import service.ProductService;
+import service.impl.FundServiceImpl;
+import service.impl.GoodsServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.ChangeTool;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.print.PrinterException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+public class OrderConfirmWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;                 // 返回的上一個畫面（購物畫面）
+    private final Member loginMember;
+
+    private final GoodsService goodsSvc     = new GoodsServiceImpl();
+    private final ProductService productSvc = new ProductServiceImpl();
+    private final FundService fundSvc       = new FundServiceImpl();
+
+    private JTable table;
+    private DefaultTableModel model;
+    private JLabel lblTotal;
+
+    /**
+     * 建立確認畫面
+     * @param back 返回頁（ConsumerShopUi）
+     * @param m    登入會員
+     * @param rows 待確認的購物品項（每列：Object[]{category, name, price, qty, line}）
+     */
+    public OrderConfirmWindow(JFrame back, Member m, List<Object[]> rows) {
+        this.back = back;
+        this.loginMember = m;
+
+        setTitle("確認訂單");
+        setSize(800, 600);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "確認訂單（會員：" + m.getUsername() + "）");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        String[] cols = {"類別", "商品", "單價", "數量", "小計"};
+        model = new DefaultTableModel(cols, 0) { @Override public boolean isCellEditable(int r, int c){ return false; } };
+        table = new JTable(model);
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBounds(20, 60, 740, 420);
+        add(sp);
+
+        for (Object[] r : rows) model.addRow(r);
+
+        JButton btnRemove = new JButton("刪除選取");
+        btnRemove.setBounds(20, 20, 110, 28);
+        add(btnRemove);
+
+        lblTotal = new JLabel();
+        lblTotal.setBounds(150, 20, 260, 28);
+        lblTotal.setFont(lblTotal.getFont().deriveFont(Font.BOLD, 14f));
+        add(lblTotal);
+        updateTotal();
+
+        JButton btnConfirm = new JButton("確認下單並列印");
+        btnConfirm.setBounds(610, 500, 150, 32);
+        add(btnConfirm);
+
+        JButton btnBack = new JButton("返回購物車");
+        btnBack.setBounds(480, 500, 110, 32);
+        add(btnBack);
+
+        btnRemove.addActionListener(e -> removeRow());
+        btnConfirm.addActionListener(e -> placeOrder());
+        btnBack.addActionListener(e -> { back.setVisible(true); dispose(); });
+    }
+
+    private void updateTotal() {
+        int sum = 0;
+        for (int i = 0; i < model.getRowCount(); i++) {
+            sum += (int) model.getValueAt(i, 4);
+        }
+        lblTotal.setText("總金額：$" + sum);
+    }
+
+    private void removeRow() {
+        int r = table.getSelectedRow();
+        if (r < 0) { JOptionPane.showMessageDialog(this, "請先選取要刪除的列"); return; }
+        model.removeRow(r);
+        updateTotal();
+    }
+
+    private void placeOrder() {
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "購物車是空的");
+            return;
+        }
+        int total = 0;
+        for (int i = 0; i < model.getRowCount(); i++) total += (int) model.getValueAt(i, 4);
+
+        String money = JOptionPane.showInputDialog(this, "請輸入付款金額", String.valueOf(total));
+        if (money == null) return;
+        int cash;
+        try { cash = Integer.parseInt(money.trim()); } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "金額格式錯誤"); return;
+        }
+        if (cash < total) { JOptionPane.showMessageDialog(this, "金額不足"); return; }
+        int change = cash - total;
+
+        // 二次檢查庫存
+        for (int i = 0; i < model.getRowCount(); i++) {
+            String name = (String) model.getValueAt(i, 1);
+            int qty = (int) model.getValueAt(i, 3);
+            Product p = productSvc.findByName(name);
+            if (p == null || p.getStock() < qty) {
+                JOptionPane.showMessageDialog(this, "庫存不足：「" + name + "」剩 " + (p==null?0:p.getStock()));
+                return;
+            }
+        }
+
+        // 寫 goods、扣庫存
+        for (int i = 0; i < model.getRowCount(); i++) {
+            String cat   = (String) model.getValueAt(i, 0);
+            String name  = (String) model.getValueAt(i, 1);
+            int price    = (int)    model.getValueAt(i, 2);
+            int qty      = (int)    model.getValueAt(i, 3);
+            int line     = (int)    model.getValueAt(i, 4);
+
+            Goods g = new Goods();
+            g.setMemberId(loginMember.getId());
+            g.setCategoryName(cat);
+            g.setProductName(name);
+            g.setUnitPrice(price);
+            g.setQuantity(qty);
+            g.setLineTotal(line);
+            g.setOrderTotal(total);
+            g.setPaidCash(cash);
+            g.setChangeAmount(change);
+            goodsSvc.save(g);
+
+            // 扣庫存
+            Product p = productSvc.findByName(name);
+            if (p != null) productSvc.changeStock(p.getId(), -qty);
+        }
+
+        // 基金入帳（營收）
+        fundSvc.addTxn("SALE", total, "銷售收入", null);
+
+        // 找零並列印
+        JOptionPane.showMessageDialog(this, "結帳完成！\n" + ChangeTool.breakdown(change));
+        try {
+            MessageFormat header = new MessageFormat("購買清單（總額 $" + total + "）");
+            MessageFormat footer = new MessageFormat("列印時間：{0,date,yyyy-MM-dd HH:mm:ss}");
+            table.print(JTable.PrintMode.FIT_WIDTH, header, footer);
+        } catch (PrinterException e) {
+            JOptionPane.showMessageDialog(this, "列印失敗：" + e.getMessage());
+        }
+
+        // 回上一頁（購物頁面可自行清空購物車）
+        back.setVisible(true);
+        dispose();
+    }
+
+    /** 靜態方法：把 JTable 的內容快速轉為 rows 格式，若你需要可直接呼叫 */
+    public static List<Object[]> dumpRows(JTable table) {
+        List<Object[]> list = new ArrayList<>();
+        DefaultTableModel m = (DefaultTableModel) table.getModel();
+        for (int i = 0; i < m.getRowCount(); i++) {
+            list.add(new Object[]{
+                    m.getValueAt(i,0),
+                    m.getValueAt(i,1),
+                    m.getValueAt(i,2),
+                    m.getValueAt(i,3),
+                    m.getValueAt(i,4)
+            });
+        }
+        return list;
+    }
+}

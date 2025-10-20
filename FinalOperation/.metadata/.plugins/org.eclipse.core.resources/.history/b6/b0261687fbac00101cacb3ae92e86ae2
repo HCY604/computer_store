@@ -1,0 +1,10 @@
+package service;
+
+import model.TimeSummary;
+
+public interface TimeLogService {
+    boolean startShift(int employeeId);
+    boolean stopShift(int employeeId);
+    TimeSummary sumUnpaid(int employeeId);
+    boolean settlePay(int employeeId);
+}

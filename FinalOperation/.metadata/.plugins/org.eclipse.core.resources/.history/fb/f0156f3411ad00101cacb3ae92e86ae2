@@ -1,0 +1,151 @@
+package controller;
+
+import model.Product;
+import service.FundService;
+import service.ProductService;
+import service.impl.FundServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import java.awt.Component;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Runnable onBack;
+    private JTable table;
+    private JLabel lblBalance, lblEstCost;
+    private javax.swing.Timer autoRefresh;
+
+    public ProcurementUi(Runnable onBack) {
+        this.onBack=onBack;
+        setSize(940, 640);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "採購進貨（售價×60%）");
+        UiKit.createBackButton(this, e -> { if (onBack!=null) onBack.run(); if (autoRefresh!=null) autoRefresh.stop(); dispose(); });
+
+        lblBalance=new JLabel("公司資金餘額：$" + new FundServiceImpl().getBalance());
+        lblBalance.setBounds(120,10,300,24); add(lblBalance);
+
+        String[] cols={"ID","類別","商品","售價","庫存","安全水位","建議進貨","進貨數量"};
+        DefaultTableModel m=new DefaultTableModel(cols,0){ @Override public boolean isCellEditable(int r,int c){ return c==5||c==7; } };
+        table=new JTable(m);
+        JScrollPane sp=new JScrollPane(table); sp.setBounds(20,50,890,440); add(sp);
+
+        DefaultTableCellRenderer lowRenderer=new DefaultTableCellRenderer(){
+            @Override
+            public Component getTableCellRendererComponent(JTable tbl, Object val, boolean sel, boolean focus, int row, int col) {
+                Component comp=super.getTableCellRendererComponent(tbl,val,sel,focus,row,col);
+                try {
+                    int stock=Integer.parseInt(String.valueOf(tbl.getValueAt(row,4)));
+                    int safe =Integer.parseInt(String.valueOf(tbl.getValueAt(row,5)));
+                    boolean low=stock<safe;
+                    if (!sel) comp.setForeground(low?java.awt.Color.RED:java.awt.Color.BLACK);
+                } catch (Exception ignore){ if(!sel) comp.setForeground(java.awt.Color.BLACK); }
+                return comp;
+            }
+        };
+        table.getColumnModel().getColumn(4).setCellRenderer(lowRenderer);
+        table.getColumnModel().getColumn(5).setCellRenderer(lowRenderer);
+
+        JButton btnMinus10=new JButton("−10");
+        JButton btnMinus1 =new JButton("−1");
+        JButton btnPlus1  =new JButton("+1");
+        JButton btnPlus10 =new JButton("+10");
+        JButton btnFill   =new JButton("補到安全水位");
+        JButton btnRun    =new JButton("執行採購");
+
+        btnMinus10.setBounds(20, 510, 70, 28);
+        btnMinus1 .setBounds(95, 510, 70, 28);
+        btnPlus1  .setBounds(170,510, 70, 28);
+        btnPlus10 .setBounds(245,510, 70, 28);
+        btnFill   .setBounds(330,510, 130,28);
+        btnRun    .setBounds(800,510, 110,28);
+
+        add(btnMinus10); add(btnMinus1); add(btnPlus1); add(btnPlus10); add(btnFill); add(btnRun);
+
+        lblEstCost=new JLabel("總估採購成本：$0（以售價×60%計）");
+        lblEstCost.setBounds(20, 550, 380, 24); add(lblEstCost);
+
+        m.addTableModelListener(new TableModelListener(){ @Override public void tableChanged(TableModelEvent e){ recalcEst(m); }});
+        btnMinus10.addActionListener(e -> addQty(m,-10));
+        btnMinus1 .addActionListener(e -> addQty(m,-1));
+        btnPlus1  .addActionListener(e -> addQty(m,+1));
+        btnPlus10 .addActionListener(e -> addQty(m,+10));
+        btnFill   .addActionListener(e -> fillSafe(m));
+        btnRun    .addActionListener(e -> doProcure(m));
+
+        loadProducts(m);
+        recalcSuggest(m);
+        recalcEst(m);
+
+        autoRefresh=new javax.swing.Timer(4000, e -> { lblBalance.setText("公司資金餘額：$" + new FundServiceImpl().getBalance()); loadProducts(m); recalcSuggest(m); recalcEst(m); });
+        autoRefresh.start();
+    }
+
+    private void loadProducts(DefaultTableModel m){
+        m.setRowCount(0);
+        List<Product> list=new ProductServiceImpl().findAll();
+        for (Product p : list) m.addRow(new Object[]{p.getId(), p.getCategory(), p.getName(), p.getPrice(), p.getStock(), p.getSafeStock(), 0, 0});
+    }
+    private int toInt(Object o){ try{ return Integer.parseInt(String.valueOf(o)); }catch(Exception e){ return 0; } }
+    private void recalcSuggest(DefaultTableModel m){
+        for (int i=0;i<m.getRowCount();i++){
+            int stock=toInt(m.getValueAt(i,4)), safe=toInt(m.getValueAt(i,5));
+            int sug=Math.max(0, safe-stock);
+            m.setValueAt(sug, i, 6);
+            if (toInt(m.getValueAt(i,7))==0) m.setValueAt(sug, i, 7);
+        }
+    }
+    private void recalcEst(DefaultTableModel m){
+        long est=0;
+        for (int i=0;i<m.getRowCount();i++){
+            int price=toInt(m.getValueAt(i,3)), qty=toInt(m.getValueAt(i,7));
+            long unitCost=Math.round(price*0.6);
+            est += unitCost * (long)qty;
+        }
+        lblEstCost.setText("總估採購成本：$" + est + "（以售價×60%計）");
+    }
+    private void addQty(DefaultTableModel m,int d){
+        int[] rows=table.getSelectedRows();
+        if (rows==null||rows.length==0){ JOptionPane.showMessageDialog(this,"請先選取資料列"); return; }
+        for (int r:rows){ int q=Math.max(0, toInt(m.getValueAt(r,7))+d); m.setValueAt(q, r, 7); }
+        recalcEst(m);
+    }
+    private void fillSafe(DefaultTableModel m){
+        int[] rows=table.getSelectedRows();
+        if (rows==null||rows.length==0){ JOptionPane.showMessageDialog(this,"請先選取資料列"); return; }
+        for (int r:rows){ int sug=toInt(m.getValueAt(r,6)); m.setValueAt(Math.max(0, sug), r, 7); }
+        recalcEst(m);
+    }
+    private void doProcure(DefaultTableModel m){
+        ProductService ps=new ProductServiceImpl();
+        FundService fs=new FundServiceImpl();
+        int total=0;
+        for (int i=0;i<m.getRowCount();i++){
+            int qty=toInt(m.getValueAt(i,7)); if (qty<=0) continue;
+            int id=toInt(m.getValueAt(i,0));
+            int price=toInt(m.getValueAt(i,3));
+            int unitCost=(int)Math.round(price*0.6);
+            int cost=unitCost*qty;
+            total+=cost;
+
+            ps.changeStock(id, qty);
+            // 寫 procurement
+            new dao.impl.ProcurementDaoImpl().insert(id, qty, unitCost, cost);
+            // 資金支出
+            fs.addTxn("PROCURE", -cost, "採購入庫", id);
+        }
+        JOptionPane.showMessageDialog(this, "採購完成，花費 $"+total);
+        lblBalance.setText("公司資金餘額：$"+fs.getBalance());
+        loadProducts(m); recalcSuggest(m); recalcEst(m);
+    }
+}

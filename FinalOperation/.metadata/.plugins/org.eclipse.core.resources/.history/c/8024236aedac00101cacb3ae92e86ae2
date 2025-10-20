@@ -1,0 +1,46 @@
+package service.impl;
+
+import dao.AdminDao;
+import dao.AttendanceDao;
+import dao.CashLedgerDao;
+import dao.impl.AdminDaoImpl;
+import dao.impl.AttendanceDaoImpl;
+import dao.impl.CashLedgerDaoImpl;
+import model.Attendance;
+import service.AttendanceService;
+
+import java.util.Date;
+import java.util.List;
+
+public class AttendanceServiceImpl implements AttendanceService {
+    private final AttendanceDao dao = new AttendanceDaoImpl();
+    private final AdminDao adminDao = new AdminDaoImpl();
+    private final CashLedgerDao ledgerDao = new CashLedgerDaoImpl();
+
+    @Override
+    public int clockIn(int employeeId) { return dao.clockIn(employeeId); }
+
+    @Override
+    public void clockOut(int attendanceId) { dao.clockOut(attendanceId); }
+
+    @Override
+    public List<Attendance> findUnsettled(int employeeId, Date from, Date to) { return dao.findUnsettled(employeeId, from, to); }
+
+    @Override
+    public int settleAndDeduct(int adminId, int employeeId, Date from, Date to) {
+        int sum = 0;
+        List<Attendance> list = dao.findUnsettled(employeeId, from, to);
+        for (Attendance a : list) {
+            if (a.getPaidAmount() != null) sum += a.getPaidAmount();
+        }
+        if (sum <= 0) return 0;
+
+        int cur = adminDao.getBalance(adminId);
+        int after = cur - sum;
+        adminDao.updateBalance(adminId, after);
+        ledgerDao.add(adminId, "PAYROLL", -sum, after, "薪資結清 EID=" + employeeId);
+
+        dao.settleRange(employeeId, from, to);
+        return sum;
+    }
+}

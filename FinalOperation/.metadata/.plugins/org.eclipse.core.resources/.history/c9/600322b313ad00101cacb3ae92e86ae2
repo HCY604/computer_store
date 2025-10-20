@@ -1,0 +1,24 @@
+package util;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class UiKit {
+    public static void attachClockToTitle(JFrame f, String baseTitle) {
+        Timer t = new Timer(1000, (ActionEvent e) -> {
+            String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+            f.setTitle(baseTitle + "  ｜  " + now);
+        });
+        t.start();
+    }
+
+    public static JButton createBackButton(JFrame f, java.awt.event.ActionListener al) {
+        JButton btn = new JButton("返回");
+        btn.setBounds(10, 10, 70, 26);
+        btn.addActionListener(al);
+        f.add(btn);
+        return btn;
+    }
+}

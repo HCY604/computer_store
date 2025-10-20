@@ -1,0 +1,47 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class HireEmployeeUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JTextField tCode, tName, tPhone, tPin;
+
+    public HireEmployeeUi() {
+        setSize(420, 280);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "新增員工");
+        UiKit.createBackButton(this, e -> dispose());
+
+        int y=40;
+        addL("員工編號：", y); tCode = addT(y); y+=36;
+        addL("姓名：", y); tName = addT(y); y+=36;
+        addL("手機：", y); tPhone = addT(y); y+=36;
+        addL("管理員密碼：", y); tPin = addT(y); y+=48;
+
+        JButton btn = new JButton("新增"); btn.setBounds(150,y,100,28); add(btn);
+        btn.addActionListener(e -> doHire());
+    }
+
+    private void addL(String s,int y){ JLabel l = new JLabel(s); l.setBounds(40,y,100,24); add(l); }
+    private JTextField addT(int y){ JTextField t = new JTextField(); t.setBounds(140,y,220,24); add(t); return t; }
+
+    private void doHire() {
+        String code=tCode.getText().trim(), name=tName.getText().trim(), phone=tPhone.getText().trim(), pin=tPin.getText().trim();
+        if (code.isEmpty()||name.isEmpty()){ JOptionPane.showMessageDialog(this,"編號/姓名必填"); return; }
+        if (!phone.isEmpty() && !phone.matches("^09\\d{8}$")){ JOptionPane.showMessageDialog(this,"手機需09開頭10碼"); return; }
+        Employee e = new Employee();
+        e.setEmpCode(code); e.setName(name); e.setPhone(phone);
+        e.setAdmin(!pin.isEmpty()); e.setAdminPin(pin.isEmpty()?null:pin);
+        new EmployeeServiceImpl().hire(e);
+        JOptionPane.showMessageDialog(this,"新增成功");
+        dispose();
+    }
+}

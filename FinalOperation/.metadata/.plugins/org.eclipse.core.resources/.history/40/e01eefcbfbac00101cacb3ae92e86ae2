@@ -1,0 +1,83 @@
+package controller;
+
+import model.Employee;
+import model.Product;
+import service.ProductService;
+import service.ProcurementService;
+import service.impl.ProductServiceImpl;
+import service.impl.ProcurementServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Employee adminEmp;
+    private final Runnable onDone;
+
+    private JCheckBox chkOnlyLow;
+    private JComboBox<ProductItem> cboProduct;
+    private JSpinner spQty;
+
+    private final ProductService prodSvc = new ProductServiceImpl();
+    private final ProcurementService procSvc = new ProcurementServiceImpl();
+
+    public ProcurementUi(Employee adminEmp, Runnable onDone) {
+        this.adminEmp = adminEmp;
+        this.onDone = onDone;
+
+        setTitle("採購進貨 - " + adminEmp.getName() + "（" + adminEmp.getEmpCode() + "）");
+        setSize(520, 240);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        chkOnlyLow = new JCheckBox("只顯示缺貨/低於水位"); chkOnlyLow.setBounds(20, 20, 200, 25); add(chkOnlyLow);
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(20, 60, 460, 25); add(cboProduct);
+
+        JLabel lQty = new JLabel("進貨數量："); lQty.setBounds(20, 100, 80, 25); add(lQty);
+        spQty = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1)); spQty.setBounds(100, 100, 80, 25); add(spQty);
+
+        JButton btnDo = new JButton("執行採購"); btnDo.setBounds(200, 100, 120, 28); add(btnDo);
+        JButton btnClose = new JButton("關閉"); btnClose.setBounds(360, 100, 120, 28); add(btnClose);
+
+        chkOnlyLow.addActionListener(e -> reloadProducts());
+        btnDo.addActionListener(e -> doProcure());
+        btnClose.addActionListener(e -> dispose());
+
+        reloadProducts();
+    }
+
+    private void reloadProducts() {
+        DefaultComboBoxModel<ProductItem> m = new DefaultComboBoxModel<>();
+        List<Product> list = chkOnlyLow.isSelected() ? prodSvc.listNeedRestock() : prodSvc.listByCategory("CPU");
+        // 同時把所有分類都載入（簡化：示範載 CPU + 缺貨列表）
+        if (!chkOnlyLow.isSelected()) {
+            String[] cats = {"主機板","記憶體","顯示卡","SSD","電源","機殼"};
+            for (String c : cats) list.addAll(prodSvc.listByCategory(c));
+        }
+        for (Product p : list) {
+            m.addElement(new ProductItem(p.getId(), p.getProductName(), p.getShelfPrice(), p.getStockQty(), p.getCategoryName()));
+        }
+        cboProduct.setModel(m);
+    }
+
+    private void doProcure() {
+        ProductItem it = (ProductItem) cboProduct.getSelectedItem();
+        if (it == null) { JOptionPane.showMessageDialog(this, "尚無可採購商品"); return; }
+        int qty = (Integer) spQty.getValue();
+        boolean ok = procSvc.procure(adminEmp.getId(), it.id, qty);
+        JOptionPane.showMessageDialog(this, ok ? "採購完成（庫存已增加）" : "採購失敗（資金不足或資料錯誤）");
+        if (ok && onDone!=null) onDone.run();
+    }
+
+    private static class ProductItem {
+        int id; String label;
+        ProductItem(int id, String name, int price, int stock, String cat){
+            this.id = id;
+            this.label = "["+cat+"] " + name + "  $"+price+" （庫存"+stock+"）";
+        }
+        @Override public String toString(){ return label; }
+    }
+}

@@ -1,0 +1,54 @@
+package controller;
+
+import vo.ReceiptVo;
+import vo.OrderItemVo;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class PrintReceipt extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public PrintReceipt(ReceiptVo vo) {
+        setTitle("列印收據");
+        setSize(540, 580);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("客戶：" + (vo.getMemberName() == null ? "-" : vo.getMemberName()) + " / " + (vo.getUsername()==null?"-":vo.getUsername()));
+        l1.setBounds(20, 20, 460, 24); add(l1);
+
+        JLabel l2 = new JLabel("時間：" + vo.getRecordTime());
+        l2.setBounds(20, 50, 460, 24); add(l2);
+
+        String[] cols = {"類別","商品","單價","數量","小計"};
+        DefaultTableModel m = new DefaultTableModel(cols, 0){
+            public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable table = new JTable(m);
+        for (OrderItemVo it : vo.getItems()) {
+            m.addRow(new Object[]{ it.getCategoryName(), it.getProductName(), it.getUnitPrice(), it.getQuantity(), it.getLineTotal() });
+        }
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBounds(20, 90, 480, 360); add(sp);
+
+        JLabel l3 = new JLabel("總額：" + vo.getTotal());
+        l3.setBounds(20, 460, 200, 24); add(l3);
+        JLabel l4 = new JLabel("付款：" + vo.getCash());
+        l4.setBounds(200, 460, 200, 24); add(l4);
+        JLabel l5 = new JLabel("找零：" + vo.getChange());
+        l5.setBounds(360, 460, 200, 24); add(l5);
+
+        JButton btnPrint = new JButton("列印");
+        btnPrint.setBounds(300, 500, 90, 28); add(btnPrint);
+
+        JButton btnBack = new JButton("返回");
+        btnBack.setBounds(400, 500, 90, 28); add(btnBack);
+
+        btnPrint.addActionListener(e -> {
+            try { table.print(); } catch (Exception ex) { JOptionPane.showMessageDialog(this, "列印失敗"); }
+        });
+        btnBack.addActionListener(e -> dispose()); // 關閉即可，回到購物頁
+    }
+}

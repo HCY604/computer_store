@@ -1,0 +1,65 @@
+package controller;
+
+import model.AdminUser;
+import service.AdminService;
+import service.impl.AdminServiceImpl;
+import util.Tool;
+
+import javax.swing.*;
+
+public class AdminLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame backFrame;
+
+    private JTextField txtUsername, txtPin;
+    private JPasswordField txtPassword;
+    private final AdminService adminService = new AdminServiceImpl();
+
+    public AdminLogin(JFrame backFrame) {
+        this.backFrame = backFrame;
+
+        setTitle("管理員登入");
+        setSize(380, 260);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("帳號："); l1.setBounds(40, 30, 80, 25); add(l1);
+        txtUsername = new JTextField(); txtUsername.setBounds(120, 30, 200, 25); add(txtUsername);
+
+        JLabel l2 = new JLabel("密碼："); l2.setBounds(40, 70, 80, 25); add(l2);
+        txtPassword = new JPasswordField(); txtPassword.setBounds(120, 70, 200, 25); add(txtPassword);
+
+        JLabel l3 = new JLabel("PIN："); l3.setBounds(40, 110, 80, 25); add(l3);
+        txtPin = new JTextField(); txtPin.setBounds(120, 110, 200, 25); add(txtPin);
+
+        JButton btnLogin = new JButton("登入"); btnLogin.setBounds(120, 160, 90, 28); add(btnLogin);
+        JButton btnBack  = new JButton("返回"); btnBack.setBounds(230, 160, 90, 28); add(btnBack);
+
+        btnLogin.addActionListener(e -> doLogin());
+        btnBack.addActionListener(e -> goBack());
+    }
+
+    private void goBack() {
+        if (backFrame != null) backFrame.setVisible(true);
+        else new RoleSelector().setVisible(true);
+        dispose();
+    }
+
+    private void doLogin() {
+        String u = txtUsername.getText().trim();
+        String p = String.valueOf(txtPassword.getPassword());
+        String pin = txtPin.getText().trim();
+        if (u.isEmpty() || p.isEmpty() || pin.isEmpty()) { JOptionPane.showMessageDialog(this, "請完整輸入"); return; }
+
+        AdminUser a = adminService.login(u, p, pin);
+        if (a != null) {
+            Tool.saveAdmin(a);
+            new AdminPanel(a, backFrame).setVisible(true);
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "登入失敗");
+        }
+    }
+}

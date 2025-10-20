@@ -1,0 +1,10 @@
+package dao;
+
+import model.Product;
+import java.util.List;
+
+public interface ProductDao {
+    List<Product> findAll();
+    Product findById(int id);
+    void updateStock(int productId, int delta); // 正數加庫存；負數扣庫存
+}

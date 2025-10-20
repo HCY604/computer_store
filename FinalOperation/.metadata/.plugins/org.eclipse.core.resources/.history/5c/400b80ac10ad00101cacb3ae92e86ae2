@@ -1,0 +1,9 @@
+package service;
+import model.Employee;
+import java.util.List;
+public interface EmployeeService {
+    Employee findByCode(String code);
+    void add(Employee e);
+    void fire(String code);
+    java.util.List<Employee> list();
+}

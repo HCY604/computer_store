@@ -1,0 +1,17 @@
+package util;
+
+import model.Member;
+import model.Employee;
+
+public class Tool {
+    private static Member currentMember;
+    private static Employee currentEmployee; // 目前登入的員工
+
+    public static void saveMember(Member m){ currentMember = m; }
+    public static Member loadMember(){ return currentMember; }
+    public static void clearMember(){ currentMember = null; }
+
+    public static void saveEmployee(Employee e){ currentEmployee = e; }
+    public static Employee loadEmployee(){ return currentEmployee; }
+    public static void clearEmployee(){ currentEmployee = null; }
+}

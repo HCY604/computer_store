@@ -1,0 +1,66 @@
+package controller;
+
+import model.Member;
+import service.MemberService;
+import service.impl.MemberServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class MemberLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final MemberService svc = new MemberServiceImpl();
+
+    private JTextField txtU, txtP, txtN, txtA, txtPh;
+
+    public MemberLogin(JFrame back){
+        this.back=back;
+        setSize(420,320); setLocationRelativeTo(null); setLayout(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        UiKit.attachClockToTitle(this,"會員登入 / 註冊");
+        UiKit.createBackButton(this, e->{ back.setVisible(true); dispose(); });
+
+        JLabel l1=new JLabel("帳號"); l1.setBounds(40,50,60,24); add(l1);
+        JLabel l2=new JLabel("密碼"); l2.setBounds(40,80,60,24); add(l2);
+        txtU=new JTextField(); txtU.setBounds(100,50,260,24); add(txtU);
+        txtP=new JPasswordField(); txtP.setBounds(100,80,260,24); add(txtP);
+        JButton btnLogin=new JButton("登入"); btnLogin.setBounds(100,110,120,28); add(btnLogin);
+        JButton btnReg=new JButton("註冊"); btnReg.setBounds(240,110,120,28); add(btnReg);
+
+        // 註冊區
+        JLabel r1=new JLabel("姓名"); r1.setBounds(40,160,60,24); add(r1);
+        JLabel r2=new JLabel("地址"); r2.setBounds(40,190,60,24); add(r2);
+        JLabel r3=new JLabel("手機"); r3.setBounds(40,220,60,24); add(r3);
+        txtN=new JTextField(); txtN.setBounds(100,160,260,24); add(txtN);
+        txtA=new JTextField(); txtA.setBounds(100,190,260,24); add(txtA);
+        txtPh=new JTextField(); txtPh.setBounds(100,220,260,24); add(txtPh);
+
+        btnLogin.addActionListener(e->doLogin());
+        btnReg.addActionListener(e->doRegister());
+    }
+
+    private void doLogin(){
+        String u=txtU.getText().trim();
+        String p=txtP.getText().trim();
+        if(u.isEmpty()||p.isEmpty()){ JOptionPane.showMessageDialog(this,"請輸入帳密"); return; }
+        Member m = svc.login(u,p);
+        if(m==null){ JOptionPane.showMessageDialog(this,"登入失敗"); return; }
+        new ConsumerShopUi(this, m).setVisible(true);
+        setVisible(false);
+    }
+
+    private void doRegister(){
+        String name=txtN.getText().trim();
+        String u=txtU.getText().trim();
+        String p=txtP.getText().trim();
+        String addr=txtA.getText().trim();
+        String phone=txtPh.getText().trim();
+        if(!phone.matches("^09\\d{8}$")) { JOptionPane.showMessageDialog(this,"手機要 09 開頭共10碼"); return; }
+        if(name.isEmpty()||u.isEmpty()||p.isEmpty()){ JOptionPane.showMessageDialog(this,"姓名/帳號/密碼必填"); return; }
+
+        Member m=new Member(); m.setName(name); m.setUsername(u); m.setPassword(p); m.setAddress(addr); m.setPhone(phone);
+        try { svc.register(m); JOptionPane.showMessageDialog(this,"註冊成功，請登入"); }
+        catch(Exception ex){ JOptionPane.showMessageDialog(this,"帳號可能重複"); }
+    }
+}

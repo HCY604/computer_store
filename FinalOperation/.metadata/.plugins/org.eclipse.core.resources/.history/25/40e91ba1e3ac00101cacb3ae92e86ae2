@@ -1,0 +1,15 @@
+package service.impl;
+
+import dao.EmployeeDao;
+import dao.impl.EmployeeDaoImpl;
+import model.Employee;
+import service.EmployeeService;
+
+public class EmployeeServiceImpl implements EmployeeService {
+    private final EmployeeDao dao = new EmployeeDaoImpl();
+
+    @Override
+    public Employee login(String username, String password) {
+        return dao.login(username, password);
+    }
+}

@@ -1,0 +1,14 @@
+package dao;
+
+public interface ProcurementDao {
+    /**
+     * 既有：依「架上價 * 0.7」自動計算成本，扣公司資金並增加庫存
+     */
+    boolean procure(int adminEmpId, int productId, int quantity);
+
+    /**
+     * ★新增多載：由呼叫端直接指定成本單價與總價（若總價不一致會以單價*數量為準）
+     * 會在同一個交易中：扣資金 → 增庫存 → 寫入採購紀錄 → 寫入庫存異動
+     */
+    boolean insert(int adminEmpId, int productId, int quantity, int costUnit, int costTotal);
+}

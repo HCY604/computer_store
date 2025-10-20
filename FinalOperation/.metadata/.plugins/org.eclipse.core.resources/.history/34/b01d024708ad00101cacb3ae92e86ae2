@@ -1,0 +1,8 @@
+package service;
+
+import vo.DailyFinanceVo;
+import java.util.List;
+
+public interface ReportService {
+    List<DailyFinanceVo> listDailyFinance(int days);
+}

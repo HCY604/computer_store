@@ -1,0 +1,86 @@
+package controller;
+
+import model.AdminUser;
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+
+import javax.swing.*;
+
+public class EmployeeRegister extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin; // 只做導覽用途（返回用）
+    private final EmployeeService svc = new EmployeeServiceImpl();
+
+    private JTextField txtCode, txtUsername, txtPassword, txtName, txtPhone;
+
+    public EmployeeRegister(AdminUser admin) {
+        this.admin = admin;
+
+        setTitle("新增員工");
+        setSize(420, 360);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("員工代碼："); l1.setBounds(40, 30, 90, 24); add(l1);
+        JLabel l2 = new JLabel("帳號：");     l2.setBounds(40, 70, 90, 24);  add(l2);
+        JLabel l3 = new JLabel("密碼：");     l3.setBounds(40, 110, 90, 24); add(l3);
+        JLabel l4 = new JLabel("姓名：");     l4.setBounds(40, 150, 90, 24); add(l4);
+        JLabel l5 = new JLabel("手機：");     l5.setBounds(40, 190, 90, 24); add(l5);
+
+        txtCode     = new JTextField(); txtCode.setBounds(130, 30, 230, 24); add(txtCode);
+        txtUsername = new JTextField(); txtUsername.setBounds(130, 70, 230, 24); add(txtUsername);
+        txtPassword = new JPasswordField(); txtPassword.setBounds(130, 110, 230, 24); add(txtPassword);
+        txtName     = new JTextField(); txtName.setBounds(130, 150, 230, 24); add(txtName);
+        txtPhone    = new JTextField(); txtPhone.setBounds(130, 190, 230, 24); add(txtPhone);
+
+        JButton btnSave = new JButton("儲存"); btnSave.setBounds(130, 240, 90, 28); add(btnSave);
+        JButton btnBack = new JButton("返回"); btnBack.setBounds(230, 240, 90, 28); add(btnBack);
+
+        btnSave.addActionListener(e -> doSave());
+        btnBack.addActionListener(e -> { new AdminPanel(admin).setVisible(true); dispose(); });
+    }
+
+    private void doSave() {
+        try {
+            String code = txtCode.getText().trim();
+            String u    = txtUsername.getText().trim();
+            String p    = txtPassword.getText().trim();
+            String n    = txtName.getText().trim();
+            String ph   = txtPhone.getText().trim();
+
+            if (code.isEmpty() || u.isEmpty() || p.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "員工代碼 / 帳號 / 密碼不可空白");
+                return;
+            }
+            // 手機正規表示法：09 開頭 + 共 10 碼
+            if (!ph.matches("^09\\d{8}$")) {
+                JOptionPane.showMessageDialog(this, "手機需為 09 開頭且共 10 碼");
+                return;
+            }
+
+            Employee e = new Employee();
+            e.setEmpCode(code);
+            e.setUsername(u);
+            e.setPassword(p);
+            e.setName(n);
+            e.setPhone(ph);
+            e.setActive(true);
+
+            svc.register(e); // 會做帳號唯一性檢查
+            JOptionPane.showMessageDialog(this, "新增成功，員工ID=" + e.getId());
+
+            // 清空表單
+            txtCode.setText(""); txtUsername.setText(""); txtPassword.setText("");
+            txtName.setText(""); txtPhone.setText("");
+
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "新增失敗，請稍後再試");
+        }
+    }
+}

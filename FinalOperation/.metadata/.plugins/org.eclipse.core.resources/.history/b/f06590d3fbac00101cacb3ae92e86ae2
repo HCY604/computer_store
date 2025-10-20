@@ -1,0 +1,55 @@
+package controller;
+
+import model.Employee;
+import service.AdminAuthService;
+import service.impl.AdminAuthServiceImpl;
+import util.Tool;
+
+import javax.swing.*;
+
+public class AdminLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame backFrame;
+
+    private JPasswordField txtAdminPwd;
+    private final AdminAuthService authSvc = new AdminAuthServiceImpl();
+
+    public AdminLogin(JFrame backFrame) {
+        this.backFrame = backFrame;
+        setTitle("管理員登入（輸入管理員密碼）");
+        setSize(360, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("管理員密碼："); l1.setBounds(40, 40, 100, 25); add(l1);
+        txtAdminPwd = new JPasswordField(); txtAdminPwd.setBounds(140, 40, 170, 25); add(txtAdminPwd);
+
+        JButton btnLogin = new JButton("登入"); btnLogin.setBounds(140, 90, 80, 28); add(btnLogin);
+        JButton btnBack  = new JButton("返回"); btnBack.setBounds(230, 90, 80, 28); add(btnBack);
+
+        btnLogin.addActionListener(e -> doLogin());
+        btnBack.addActionListener(e -> goBack());
+    }
+
+    private void goBack() {
+        if (backFrame != null) { backFrame.setVisible(true); dispose(); }
+        else { new EmployeePanel().setVisible(true); dispose(); }
+    }
+
+    private void doLogin() {
+        Employee emp = Tool.loadEmployee();
+        if (emp == null) { JOptionPane.showMessageDialog(this, "未有員工登入"); return; }
+
+        String pwd = String.valueOf(txtAdminPwd.getPassword());
+        if (pwd.isEmpty()) { JOptionPane.showMessageDialog(this, "請輸入管理員密碼"); return; }
+
+        boolean ok = authSvc.loginAsAdmin(emp.getId(), pwd);
+        if (ok) {
+            new AdminPanel(emp, backFrame).setVisible(true);
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "管理員密碼錯誤或未開通");
+        }
+    }
+}

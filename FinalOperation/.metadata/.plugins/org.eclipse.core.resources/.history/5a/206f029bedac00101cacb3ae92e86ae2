@@ -1,0 +1,5 @@
+package service;
+
+public interface ProcureService {
+    void procure(int adminId, int productId, int quantity);
+}

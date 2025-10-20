@@ -1,0 +1,12 @@
+package util;
+
+import java.util.List;
+import java.util.Map;
+
+
+public class ExcelExporter {
+    @SuppressWarnings("unchecked")
+    public static void exportSheets(List<Map<String, Object>> sheets, String path) throws Exception {
+                throw new UnsupportedOperationException("尚未加入 Apache POI，無法匯出 Excel（請替換 ExcelExporter 的實作）");
+    }
+}

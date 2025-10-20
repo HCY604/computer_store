@@ -1,0 +1,23 @@
+package dao.impl;
+
+import dao.ProcurementDao;
+import util.DbConnection;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class ProcurementDaoImpl implements ProcurementDao {
+    @Override
+    public void insert(int adminId, int productId, int quantity, int costUnit, int costTotal) {
+        String sql = "INSERT INTO procurement(admin_id,product_id,quantity,cost_unit,cost_total) VALUES(?,?,?,?,?)";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ps.setInt(1, adminId);
+            ps.setInt(2, productId);
+            ps.setInt(3, quantity);
+            ps.setInt(4, costUnit);
+            ps.setInt(5, costTotal);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+}

@@ -1,0 +1,51 @@
+package controller;
+
+import model.Member;
+import service.MemberService;
+import service.impl.MemberServiceImpl;
+import util.UiKit;
+import util.Tool;
+
+import javax.swing.*;
+
+public class MemberLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private JTextField txtUser;
+    private JPasswordField txtPass;
+
+    public MemberLogin(JFrame back) {
+        this.back = back;
+        setSize(380, 260);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "會員登入");
+        UiKit.createBackButton(this, e -> { if (back!=null) back.setVisible(true); dispose(); });
+
+        JLabel l1 = new JLabel("帳號："); l1.setBounds(60, 60, 60, 24); add(l1);
+        txtUser = new JTextField(); txtUser.setBounds(120, 60, 180, 24); add(txtUser);
+
+        JLabel l2 = new JLabel("密碼："); l2.setBounds(60, 100, 60, 24); add(l2);
+        txtPass = new JPasswordField(); txtPass.setBounds(120, 100, 180, 24); add(txtPass);
+
+        JButton btnLogin = new JButton("登入"); btnLogin.setBounds(120, 140, 80, 28); add(btnLogin);
+        JButton btnReg   = new JButton("註冊"); btnReg.setBounds(220, 140, 80, 28); add(btnReg);
+
+        btnLogin.addActionListener(e -> doLogin());
+        btnReg.addActionListener(e -> { new MemberRegister(this).setVisible(true); setVisible(false); });
+    }
+
+    private void doLogin() {
+        String u = txtUser.getText().trim();
+        String p = new String(txtPass.getPassword());
+        if (u.isEmpty() || p.isEmpty()) { JOptionPane.showMessageDialog(this,"請輸入帳密"); return; }
+        MemberService svc = new MemberServiceImpl();
+        Member m = svc.login(u, p);
+        if (m == null) { JOptionPane.showMessageDialog(this,"帳號或密碼錯誤"); return; }
+        Tool.saveMember(m);
+        new OrderUi(this).setVisible(true);
+        dispose();
+    }
+}

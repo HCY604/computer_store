@@ -1,0 +1,83 @@
+package dao.impl;
+
+import dao.EmployeeDao;
+import model.Employee;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class EmployeeDaoImpl implements EmployeeDao {
+    @Override
+    public Employee findByCode(String code) {
+        String sql = "SELECT id,emp_code,emp_name,is_admin,active FROM employee WHERE emp_code=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, code);
+            try(ResultSet rs = ps.executeQuery()){
+                if (rs.next()) {
+                    Employee e = new Employee();
+                    e.setId(rs.getInt("id"));
+                    e.setEmpCode(rs.getString("emp_code"));
+                    e.setEmpName(rs.getString("emp_name"));
+                    e.setAdmin(rs.getInt("is_admin")==1);
+                    e.setActive(rs.getInt("active")==1);
+                    return e;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("查詢員工失敗：" + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    @Override
+    public void insert(Employee e) {
+        String sql = "INSERT INTO employee(emp_code, emp_name, is_admin, active) VALUES (?,?,?,1)";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, e.getEmpCode());
+            ps.setString(2, e.getEmpName());
+            ps.setInt(3, e.isAdmin()?1:0);
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            throw new RuntimeException("新增員工失敗：" + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public void setActive(String code, boolean active) {
+        String sql = "UPDATE employee SET active=? WHERE emp_code=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, active?1:0);
+            ps.setString(2, code);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("更新在職狀態失敗：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<Employee> findAll() {
+        String sql = "SELECT id,emp_code,emp_name,is_admin,active FROM employee ORDER BY emp_code";
+        List<Employee> list = new ArrayList<>();
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()){
+                Employee e = new Employee();
+                e.setId(rs.getInt("id"));
+                e.setEmpCode(rs.getString("emp_code"));
+                e.setEmpName(rs.getString("emp_name"));
+                e.setAdmin(rs.getInt("is_admin")==1);
+                e.setActive(rs.getInt("active")==1);
+                list.add(e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取員工清單失敗：" + e.getMessage(), e);
+        }
+        return list;
+    }
+}

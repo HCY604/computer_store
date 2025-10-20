@@ -1,0 +1,47 @@
+package controller;
+
+import model.Employee;
+import service.AttendanceService;
+import service.impl.AttendanceServiceImpl;
+
+import javax.swing.*;
+
+public class EmployeePanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Employee emp;
+    private final AttendanceService svc = new AttendanceServiceImpl();
+    private int currentAttendanceId = 0;
+
+    public EmployeePanel(Employee emp) {
+        this.emp = emp;
+
+        setTitle("員工面板 - " + emp.getName());
+        setSize(380, 220);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel info = new JLabel("員工：" + emp.getName() + " (代碼 " + emp.getEmployeeCode() + ")");
+        info.setBounds(20, 20, 320, 24); add(info);
+
+        JButton in = new JButton("上班打卡"); in.setBounds(40, 70, 120, 30); add(in);
+        JButton out = new JButton("下班打卡"); out.setBounds(200, 70, 120, 30); add(out);
+        JButton back = new JButton("返回"); back.setBounds(140, 120, 100, 28); add(back);
+
+        in.addActionListener(e -> {
+            currentAttendanceId = svc.clockIn(emp.getId());
+            JOptionPane.showMessageDialog(this, "打卡成功 (ID=" + currentAttendanceId + ")");
+        });
+        out.addActionListener(e -> {
+            if (currentAttendanceId > 0) {
+                svc.clockOut(currentAttendanceId);
+                JOptionPane.showMessageDialog(this, "下班成功，工時已計算（秒薪1元）");
+                currentAttendanceId = 0;
+            } else {
+                JOptionPane.showMessageDialog(this, "尚未上班打卡");
+            }
+        });
+        back.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+    }
+}

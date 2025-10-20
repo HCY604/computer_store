@@ -1,0 +1,11 @@
+package dao;
+
+import model.Product;
+import java.util.List;
+
+public interface ProductDao {
+    List<Product> findAll();
+    Product findById(int id);
+    void changeStock(int productId, int delta);     // +增加 / -減少庫存
+    void updateSafeStock(int productId, int safe);  // 調整安全水位
+}

@@ -1,0 +1,5 @@
+package dao;
+
+public interface CashLedgerDao {
+    void add(int adminId, String type, int amount, int balanceAfter, String memo);
+}

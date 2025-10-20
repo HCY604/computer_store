@@ -1,0 +1,30 @@
+package service.impl;
+
+import dao.FundDao;
+import dao.TimeLogDao;
+import dao.impl.FundDaoImpl;
+import dao.impl.TimeLogDaoImpl;
+import model.TimeSummary;
+import service.TimeLogService;
+
+public class TimeLogServiceImpl implements TimeLogService {
+    private final TimeLogDao dao = new TimeLogDaoImpl();
+    private final FundDao fundDao = new FundDaoImpl();
+
+    @Override public boolean startShift(int employeeId) { return dao.startShift(employeeId); }
+
+    @Override public boolean stopShift(int employeeId) { return dao.stopShift(employeeId); }
+
+    @Override public TimeSummary sumUnpaid(int employeeId) { return dao.sumUnpaid(employeeId); }
+
+    @Override
+    public boolean settlePay(int employeeId) {
+        TimeSummary s = dao.sumUnpaid(employeeId);
+        if (s.getTotalAmount() <= 0) return false;
+        // 先扣公司資金（PAYROLL，金額為負）
+        boolean ok = fundDao.addTxn("PAYROLL", -s.getTotalAmount(), "payroll employeeId=" + employeeId, null);
+        if (!ok) return false;
+        // 標示已付並產生薪資紀錄
+        return dao.markPaid(employeeId, s.getTotalSeconds(), s.getTotalAmount());
+    }
+}

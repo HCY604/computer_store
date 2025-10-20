@@ -1,0 +1,13 @@
+package service.impl;
+
+import service.AdminAuthService;
+import service.EmployeeService;
+import model.Employee;
+
+public class AdminAuthServiceImpl implements AdminAuthService {
+    private final EmployeeService empSvc = new EmployeeServiceImpl();
+    @Override
+    public boolean loginAsAdmin(int employeeId, String adminPassword) {
+        return empSvc.verifyAdmin(employeeId, adminPassword);
+    }
+}

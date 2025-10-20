@@ -1,0 +1,8 @@
+package dao;
+
+import vo.DailyProfitVo;
+import java.util.List;
+
+public interface ReportDao {
+    List<DailyProfitVo> listDailyProfit(int lastNDays);
+}

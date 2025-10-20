@@ -1,0 +1,8 @@
+package dao;
+
+import vo.DailyFinanceVo;
+import java.util.List;
+
+public interface ReportDao {
+    List<DailyFinanceVo> listDailyFinance(int days);
+}

@@ -1,0 +1,9 @@
+package service;
+
+import model.Member;
+
+public interface MemberService {
+    void register(Member m);
+    Member login(String username, String password);
+    boolean usernameExists(String username);
+}

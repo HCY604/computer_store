@@ -1,0 +1,9 @@
+package service;
+
+import model.AdminUser;
+
+public interface AdminService {
+    AdminUser login(String username, String password, String pin);
+    int getBalance(int adminId);
+    void updateBalance(int adminId, int newBalance);
+}

@@ -1,0 +1,9 @@
+package dao;
+
+import model.AdminUser;
+
+public interface AdminDao {
+    AdminUser login(String username, String password, String pin);
+    int getBalance(int adminId);
+    void updateBalance(int adminId, int delta); // 正數加，負數扣
+}

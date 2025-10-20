@@ -1,0 +1,69 @@
+package dao.impl;
+
+import dao.ReportDao;
+import util.DbConnection;
+import vo.DailyFinanceVo;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ReportDaoImpl implements ReportDao {
+    @Override
+    public List<DailyFinanceVo> listDailyFinance(int days) {
+        String saleSql = "SELECT DATE(order_time) d, IFNULL(SUM(line_total),0) amt " +
+                "FROM goods WHERE order_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY d";
+        String procSql = "SELECT DATE(created_at) d, IFNULL(SUM(total_cost),0) amt " +
+                "FROM procurement WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY d";
+        String paySql = "SELECT DATE(clock_out) d, IFNULL(SUM(seconds_worked),0) amt " +
+                "FROM attendance_log WHERE clock_out IS NOT NULL AND clock_out >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY d";
+
+        List<DailyFinanceVo> list = new ArrayList<>();
+
+        try (Connection c = DbConnection.getDb()) {
+            // 銷售
+            try (PreparedStatement ps = c.prepareStatement(saleSql)) {
+                ps.setInt(1, days);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        DailyFinanceVo v = new DailyFinanceVo();
+                        v.setBizDate(rs.getString("d"));
+                        v.setSalesAmount(rs.getInt("amt"));
+                        list.add(v);
+                    }
+                }
+            }
+            // 採購
+            try (PreparedStatement ps = c.prepareStatement(procSql)) {
+                ps.setInt(1, days);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String d = rs.getString("d");
+                        int amt = rs.getInt("amt");
+                        DailyFinanceVo v = list.stream().filter(x -> x.getBizDate().equals(d)).findFirst().orElse(null);
+                        if (v == null) { v = new DailyFinanceVo(); v.setBizDate(d); list.add(v); }
+                        v.setProcureCost(v.getProcureCost() + amt);
+                    }
+                }
+            }
+            // 人事
+            try (PreparedStatement ps = c.prepareStatement(paySql)) {
+                ps.setInt(1, days);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String d = rs.getString("d");
+                        int amt = rs.getInt("amt");
+                        DailyFinanceVo v = list.stream().filter(x -> x.getBizDate().equals(d)).findFirst().orElse(null);
+                        if (v == null) { v = new DailyFinanceVo(); v.setBizDate(d); list.add(v); }
+                        v.setPayrollCost(v.getPayrollCost() + amt);
+                    }
+                }
+            }
+
+            list.sort((a,b) -> a.getBizDate().compareTo(b.getBizDate()));
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取報表失敗：" + e.getMessage(), e);
+        }
+        return list;
+    }
+}

@@ -1,0 +1,17 @@
+package service.impl;
+
+import dao.ProductDao;
+import dao.impl.ProductDaoImpl;
+import model.Product;
+import service.ProductService;
+
+import java.util.List;
+
+public class ProductServiceImpl implements ProductService {
+    private final ProductDao dao = new ProductDaoImpl();
+    @Override public List<String> listCategories(){ return dao.listCategories(); }
+    @Override public List<Product> listByCategory(String categoryName){ return dao.listByCategory(categoryName); }
+    @Override public List<Product> listNeedRestock(){ return dao.listNeedRestock(); }
+    @Override public Product getByName(String name){ return dao.findByName(name); }
+    @Override public Product getById(int id){ return dao.findById(id); }
+}

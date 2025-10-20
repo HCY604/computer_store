@@ -1,0 +1,241 @@
+package controller;
+
+import model.Goods;
+import model.Member;
+import model.Product;
+import service.GoodsService;
+import service.ProductService;
+import service.impl.GoodsServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.ChangeTool;
+import util.Tool;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+public class OrderUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JComboBox<String> cboCategory;
+    private JComboBox<Product> cboProduct;
+    private JTextField txtUnitPrice;
+    private JLabel lblStock;                 // ★ 顯示庫存
+    private JSpinner spQuantity;
+    private JTable table;
+    private JLabel lblTotal;
+
+    private final DefaultTableModel tableModel;
+    private final Order order = new Order();
+
+    private final ProductService productService = new ProductServiceImpl();
+    private final GoodsService goodsService = new GoodsServiceImpl();
+
+    public OrderUi() {
+        setTitle("購買電腦");
+        setSize(880, 700);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("類別："); l1.setBounds(20, 20, 60, 25); add(l1);
+        cboCategory = new JComboBox<>(); cboCategory.setBounds(80, 20, 160, 25); add(cboCategory);
+
+        JLabel l2 = new JLabel("產品："); l2.setBounds(260, 20, 60, 25); add(l2);
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(320, 20, 260, 25); add(cboProduct);
+
+        JLabel l3 = new JLabel("單價："); l3.setBounds(600, 20, 50, 25); add(l3);
+        txtUnitPrice = new JTextField(); txtUnitPrice.setBounds(650, 20, 80, 25); txtUnitPrice.setHorizontalAlignment(SwingConstants.RIGHT); txtUnitPrice.setEditable(false); add(txtUnitPrice);
+
+        lblStock = new JLabel("庫存：-"); lblStock.setBounds(740, 20, 120, 25); add(lblStock);
+
+        JLabel l4 = new JLabel("數量："); l4.setBounds(20, 60, 60, 25); add(l4);
+        spQuantity = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1)); spQuantity.setBounds(80, 60, 80, 25); add(spQuantity);
+
+        JButton btnAdd = new JButton("加入購物車"); btnAdd.setBounds(180, 60, 120, 28); add(btnAdd);
+        JButton btnDelete = new JButton("刪除選取"); btnDelete.setBounds(310, 60, 120, 28); add(btnDelete);
+        JButton btnPrintTable = new JButton("列印購物清單"); btnPrintTable.setBounds(440, 60, 140, 28); add(btnPrintTable);
+        JButton btnBackMain = new JButton("返回主選單"); btnBackMain.setBounds(600, 60, 120, 28); add(btnBackMain);
+
+        String[] cols = {"類別","產品名稱","單價","數量","小計"};
+        tableModel = new DefaultTableModel(cols, 0) { public boolean isCellEditable(int r,int c){return false;} };
+        table = new JTable(tableModel);
+        JScrollPane sp = new JScrollPane(table); sp.setBounds(20, 100, 830, 480); add(sp);
+
+        lblTotal = new JLabel("應付總額：$0");
+        lblTotal.setBounds(20, 590, 300, 30);
+        lblTotal.setFont(lblTotal.getFont().deriveFont(Font.BOLD, 16f));
+        add(lblTotal);
+
+        JButton btnPaySave = new JButton("付款 / 存檔(找零)"); btnPaySave.setBounds(700, 630, 150, 30); add(btnPaySave);
+
+        // 事件
+        cboCategory.addActionListener(e -> refreshProducts());
+        cboProduct.addActionListener(e -> syncPriceAndStock());
+        btnAdd.addActionListener(e -> addCurrentSelection());
+        btnDelete.addActionListener(e -> deleteSelectedRow());
+        btnPrintTable.addActionListener(e -> printCurrentTable());
+        btnPaySave.addActionListener(e -> doPayAndSave());
+        btnBackMain.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+
+        // 載入分類
+        loadCategories();
+    }
+
+    private void loadCategories() {
+        DefaultComboBoxModel<String> m = new DefaultComboBoxModel<>();
+        for (String c : productService.listCategories()) m.addElement(c);
+        cboCategory.setModel(m);
+        refreshProducts();
+    }
+
+    private void refreshProducts() {
+        String cat = (String) cboCategory.getSelectedItem();
+        DefaultComboBoxModel<Product> m = new DefaultComboBoxModel<>();
+        if (cat != null) {
+            List<Product> list = productService.listByCategory(cat);
+            for (Product p : list) m.addElement(p);
+        }
+        cboProduct.setModel(m);
+        syncPriceAndStock();
+    }
+
+    private void syncPriceAndStock() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { txtUnitPrice.setText(""); lblStock.setText("庫存：-"); return; }
+        // 取最新
+        Product fresh = productService.getByName(p.getProductName());
+        if (fresh != null) p = fresh;
+        txtUnitPrice.setText(String.valueOf(p.getShelfPrice()));
+        lblStock.setText("庫存：" + p.getStockQty());
+    }
+
+    private void addCurrentSelection() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { JOptionPane.showMessageDialog(this, "請先選擇商品"); return; }
+
+        int price, qty;
+        try { price = Integer.parseInt(txtUnitPrice.getText().trim()); }
+        catch (Exception ex) { JOptionPane.showMessageDialog(this, "單價格式錯誤"); return; }
+        qty = (int) spQuantity.getValue();
+        if (qty <= 0) { JOptionPane.showMessageDialog(this, "數量必須大於 0"); return; }
+
+        // 即時庫存檢查
+        Product fresh = productService.getByName(p.getProductName());
+        int stock = fresh == null ? p.getStockQty() : fresh.getStockQty();
+        if (qty > stock) {
+            JOptionPane.showMessageDialog(this, "庫存不足，剩餘：" + stock);
+            return;
+        }
+
+        int line = price * qty;
+        tableModel.addRow(new Object[]{ fresh != null ? fresh.getCategoryName() : "", p.getProductName(), price, qty, line });
+        order.addItem(new Order.Item(fresh != null ? fresh.getCategoryName() : "", p.getProductName(), price, qty));
+        updateTotalLabel();
+    }
+
+    private void deleteSelectedRow() {
+        int row = table.getSelectedRow();
+        if (row < 0) { JOptionPane.showMessageDialog(this, "請先選取要刪除的列"); return; }
+        tableModel.removeRow(row);
+        order.removeItemAt(row);
+        updateTotalLabel();
+    }
+
+    private void updateTotalLabel() {
+        int total = order.getTotalAmount();
+        lblTotal.setText("應付總額：$" + total);
+    }
+
+    private void printCurrentTable() {
+        try {
+            String title = "購物清單";
+            String time = new SimpleDateFormat("yyyy/MM/dd HH:mm").format(new Date());
+            MessageFormat header = new MessageFormat(title);
+            MessageFormat footer = new MessageFormat("列印時間：" + time + "     第 {0} 頁");
+            table.print(JTable.PrintMode.FIT_WIDTH, header, footer);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "列印失敗：" + ex.getMessage());
+        }
+    }
+
+    private void doPayAndSave() {
+        int total = order.getTotalAmount();
+        if (total <= 0) { JOptionPane.showMessageDialog(this, "尚未加入任何商品"); return; }
+
+        String s = JOptionPane.showInputDialog(this, "請輸入付款金額（整數）", String.valueOf(total));
+        if (s == null) return;
+        int cash;
+        try { cash = Integer.parseInt(s.trim()); }
+        catch (Exception ex) { JOptionPane.showMessageDialog(this, "金額格式不正確"); return; }
+        if (cash < total) { JOptionPane.showMessageDialog(this, "付款金額不足（應付 $" + total + "）"); return; }
+        int change = cash - total;
+
+        Integer memberId = null;
+        try { Member m = Tool.loadMember(); if (m != null) memberId = m.getId(); } catch (Exception ignore) {}
+        String recordTime = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new Date());
+
+        // 再次庫存檢查 & 寫入 DB
+        List<Order.Item> okItems = new ArrayList<>();
+        StringBuilder insufficient = new StringBuilder();
+
+        for (Order.Item it : order.getItems()) {
+            Product p = productService.getByName(it.getProductName());
+            if (p == null) { insufficient.append("找不到商品：").append(it.getProductName()).append("\n"); continue; }
+            if (it.getQuantity() > p.getStockQty()) {
+                insufficient.append(it.getProductName()).append(" 庫存不足，剩 ").append(p.getStockQty()).append("\n");
+                continue;
+            }
+            okItems.add(it);
+        }
+
+        if (okItems.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "所有項目都無法結帳：\n" + insufficient);
+            return;
+        }
+
+        // 寫入 goods；扣庫存
+        for (Order.Item it : okItems) {
+            Goods g = new Goods();
+            g.setMemberId(memberId);
+            g.setCategoryName(it.getCategoryName());
+            g.setProductName(it.getProductName());
+            g.setUnitPrice(it.getUnitPrice());
+            g.setQuantity(it.getQuantity());
+            g.setLineTotal(it.getLineTotal());
+            g.setOrderTotal(total);
+            g.setPaidCash(cash);
+            g.setChangeAmount(change);
+            goodsService.save(g);
+
+            Product p = productService.getByName(it.getProductName());
+            if (p != null) {
+                boolean ok = productService.decreaseStock(p.getId(), it.getQuantity());
+                if (!ok) insufficient.append(it.getProductName()).append(" 扣庫存失敗\n");
+            }
+        }
+
+        if (insufficient.length() > 0) {
+            JOptionPane.showMessageDialog(this, "部分項目結帳/扣庫存失敗：\n" + insufficient);
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "完成！時間：" + recordTime + "\n共 " + okItems.size() + " 筆商品已存入。\n\n" + ChangeTool.breakdown(change));
+
+        // 清空與刷新
+        order.clear();
+        tableModel.setRowCount(0);
+        updateTotalLabel();
+        syncPriceAndStock(); // 讓上方庫存顯示最新
+    }
+
+    public static void main(String[] args) {
+        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception ignore) {}
+        EventQueue.invokeLater(() -> new OrderUi().setVisible(true));
+    }
+}

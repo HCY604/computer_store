@@ -1,0 +1,30 @@
+package dao.impl;
+
+import dao.GoodsDao;
+import model.Goods;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class GoodsDaoImpl implements GoodsDao {
+    @Override
+    public void insert(Goods g) {
+        String sql = "INSERT INTO goods(member_id,category_name,product_name,unit_price,quantity,line_total,order_total,paid_cash,change_amount) " +
+                     "VALUES (?,?,?,?,?,?,?,?,?)";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            if (g.getMemberId() == null) ps.setNull(1, Types.INTEGER); else ps.setInt(1, g.getMemberId());
+            ps.setString(2, g.getCategoryName());
+            ps.setString(3, g.getProductName());
+            ps.setInt(4, g.getUnitPrice());
+            ps.setInt(5, g.getQuantity());
+            ps.setInt(6, g.getLineTotal());
+            ps.setInt(7, g.getOrderTotal());
+            ps.setInt(8, g.getPaidCash());
+            ps.setInt(9, g.getChangeAmount());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("寫入銷售失敗：" + e.getMessage(), e);
+        }
+    }
+}

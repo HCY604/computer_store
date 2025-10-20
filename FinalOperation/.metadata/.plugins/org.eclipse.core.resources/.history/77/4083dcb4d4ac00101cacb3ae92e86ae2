@@ -1,0 +1,48 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+
+import javax.swing.*;
+
+public class EmployeeLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JTextField txtU;
+    private JPasswordField txtP;
+
+    private final EmployeeService svc = new EmployeeServiceImpl();
+
+    public EmployeeLogin() {
+        setTitle("員工登入");
+        setSize(360, 220);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("帳號："); l1.setBounds(40, 40, 60, 24); add(l1);
+        JLabel l2 = new JLabel("密碼："); l2.setBounds(40, 80, 60, 24); add(l2);
+
+        txtU = new JTextField(); txtU.setBounds(100, 40, 200, 24); add(txtU);
+        txtP = new JPasswordField(); txtP.setBounds(100, 80, 200, 24); add(txtP);
+
+        JButton btn = new JButton("登入"); btn.setBounds(210, 120, 90, 28); add(btn);
+        JButton back = new JButton("返回"); back.setBounds(100, 120, 90, 28); add(back);
+
+        btn.addActionListener(e -> doLogin());
+        back.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+    }
+
+    private void doLogin() {
+        String u = txtU.getText().trim();
+        String p = new String(txtP.getPassword());
+        Employee emp = svc.login(u, p);
+        if (emp != null) {
+            new EmployeePanel(emp).setVisible(true);
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "登入失敗");
+        }
+    }
+}

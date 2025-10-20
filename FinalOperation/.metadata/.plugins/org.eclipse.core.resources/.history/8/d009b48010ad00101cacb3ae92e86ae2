@@ -1,0 +1,64 @@
+package dao.impl;
+
+import dao.MemberDao;
+import model.Member;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class MemberDaoImpl implements MemberDao {
+    @Override
+    public void insert(Member m) {
+        String sql = "INSERT INTO member(name,username,password,address,phone) VALUES (?,?,?,?,?)";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, m.getName());
+            ps.setString(2, m.getUsername());
+            ps.setString(3, m.getPassword());
+            ps.setString(4, m.getAddress());
+            ps.setString(5, m.getPhone());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("註冊會員失敗：" + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Member login(String username, String password) {
+        String sql = "SELECT id,name,username,password,address,phone FROM member WHERE username=? AND password=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            try(ResultSet rs = ps.executeQuery()){
+                if (rs.next()) {
+                    Member m = new Member();
+                    m.setId(rs.getInt("id"));
+                    m.setName(rs.getString("name"));
+                    m.setUsername(rs.getString("username"));
+                    m.setPassword(rs.getString("password"));
+                    m.setAddress(rs.getString("address"));
+                    m.setPhone(rs.getString("phone"));
+                    return m;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("會員登入失敗：" + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    @Override
+    public boolean existsUsername(String username) {
+        String sql = "SELECT 1 FROM member WHERE username=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try(ResultSet rs = ps.executeQuery()){
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("檢查帳號失敗：" + e.getMessage(), e);
+        }
+    }
+}

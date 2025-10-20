@@ -1,0 +1,16 @@
+package service.impl;
+
+import dao.EmployeeDao;
+import dao.impl.EmployeeDaoImpl;
+import model.Employee;
+import service.EmployeeService;
+
+import java.util.List;
+
+public class EmployeeServiceImpl implements EmployeeService {
+    private final EmployeeDao dao = new EmployeeDaoImpl();
+    @Override public Employee findByCode(String code){ return dao.findByCode(code); }
+    @Override public void add(Employee e){ dao.insert(e); }
+    @Override public void fire(String code){ dao.setActive(code,false); }
+    @Override public List<Employee> list(){ return dao.findAll(); }
+}

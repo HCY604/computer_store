@@ -1,0 +1,99 @@
+package controller;
+
+import model.AdminUser;
+import model.Product;
+import service.ProcurementService;
+import service.ProductService;
+import service.impl.ProcurementServiceImpl;
+import service.impl.ProductServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin;
+    private final Runnable onBalanceRefresh;
+
+    private final ProductService productSvc = new ProductServiceImpl();
+    private final ProcurementService procSvc = new ProcurementServiceImpl();
+
+    private JComboBox<Product> cboProduct;
+    private JTextField txtShelfPrice, txtStock, txtReorderPoint;
+    private JSpinner spQty;
+
+    public ProcurementUi(AdminUser admin, Runnable onBalanceRefresh) {
+        this.admin = admin;
+        this.onBalanceRefresh = onBalanceRefresh;
+
+        setTitle("管理員採購（只顯示需補貨商品）");
+        setSize(520, 320);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l0 = new JLabel("商品："); l0.setBounds(30, 30, 60, 24); add(l0);
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(90, 30, 380, 24); add(cboProduct);
+
+        JLabel l1 = new JLabel("售價："); l1.setBounds(30, 70, 60, 24); add(l1);
+        txtShelfPrice = new JTextField(); txtShelfPrice.setBounds(90, 70, 100, 24); txtShelfPrice.setEditable(false); add(txtShelfPrice);
+
+        JLabel l2 = new JLabel("庫存："); l2.setBounds(220, 70, 60, 24); add(l2);
+        txtStock = new JTextField(); txtStock.setBounds(270, 70, 80, 24); txtStock.setEditable(false); add(txtStock);
+
+        JLabel l3 = new JLabel("安全存量："); l3.setBounds(360, 70, 80, 24); add(l3);
+        txtReorderPoint = new JTextField(); txtReorderPoint.setBounds(440, 70, 30, 24); txtReorderPoint.setEditable(false); add(txtReorderPoint);
+
+        JLabel l4 = new JLabel("進貨量："); l4.setBounds(30, 110, 60, 24); add(l4);
+        spQty = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1)); spQty.setBounds(90, 110, 100, 24); add(spQty);
+
+        JButton btnReload = new JButton("重新載入清單"); btnReload.setBounds(220, 110, 140, 24); add(btnReload);
+        JButton btnDo = new JButton("執行採購"); btnDo.setBounds(370, 110, 100, 24); add(btnDo);
+
+        JButton btnClose = new JButton("返回"); btnClose.setBounds(200, 160, 100, 26); add(btnClose);
+
+        // 載入需補貨的商品
+        loadNeedRestock();
+
+        cboProduct.addActionListener(e -> fillCurrentInfo());
+        btnReload.addActionListener(e -> loadNeedRestock());
+        btnDo.addActionListener(e -> doProcure());
+        btnClose.addActionListener(e -> { dispose(); });
+    }
+
+    private void loadNeedRestock() {
+        DefaultComboBoxModel<Product> m = new DefaultComboBoxModel<>();
+        List<Product> list = productSvc.listNeedRestock();
+        for (Product p : list) m.addElement(p);
+        cboProduct.setModel(m);
+        fillCurrentInfo();
+    }
+
+    private void fillCurrentInfo() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { txtShelfPrice.setText(""); txtStock.setText(""); txtReorderPoint.setText(""); return; }
+        // 讀取最新資料（避免顯示過舊）
+        Product fresh = productSvc.getByName(p.getProductName());
+        if (fresh != null) p = fresh;
+        txtShelfPrice.setText(String.valueOf(p.getShelfPrice()));
+        txtStock.setText(String.valueOf(p.getStockQty()));
+        txtReorderPoint.setText(String.valueOf(p.getReorderPoint()));
+    }
+
+    private void doProcure() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { JOptionPane.showMessageDialog(this, "目前沒有需要補貨的商品"); return; }
+        int qty = (int) spQty.getValue();
+        if (qty <= 0) { JOptionPane.showMessageDialog(this, "數量錯誤"); return; }
+
+        boolean ok = procSvc.procure(admin.getId(), p.getId(), qty);
+        if (ok) {
+            JOptionPane.showMessageDialog(this, "採購完成（成本=售價×70% 已扣管理員資金）");
+            if (onBalanceRefresh != null) onBalanceRefresh.run();
+            loadNeedRestock();
+        } else {
+            JOptionPane.showMessageDialog(this, "採購失敗：可能資金不足或系統錯誤");
+        }
+    }
+}

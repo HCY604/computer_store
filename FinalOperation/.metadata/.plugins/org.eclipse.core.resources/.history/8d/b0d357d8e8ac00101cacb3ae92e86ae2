@@ -1,0 +1,5 @@
+package dao;
+
+public interface ProcurementDao {
+    boolean procure(int adminEmpId, int productId, int quantity); // 成本=售價*0.7，扣公司資金，增庫存
+}

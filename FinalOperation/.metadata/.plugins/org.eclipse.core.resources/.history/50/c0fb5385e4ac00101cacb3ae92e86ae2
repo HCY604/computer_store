@@ -1,0 +1,46 @@
+package controller;
+
+import model.Employee;
+import util.Tool;
+
+import javax.swing.*;
+
+public class EmployeePanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public EmployeePanel() {
+        Employee emp = Tool.loadEmployee();
+
+        setTitle("員工介面" + (emp != null ? " - " + emp.getName() : ""));
+        setSize(420, 260);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel welcome = new JLabel(emp != null ? ("歡迎，" + emp.getName() + "（" + emp.getUsername() + "）") : "未登入");
+        welcome.setBounds(30, 30, 360, 25); add(welcome);
+
+        JButton btnAdminLogin = new JButton("管理員登入");
+        btnAdminLogin.setBounds(30, 80, 160, 30); add(btnAdminLogin);
+
+        JButton btnBackMain = new JButton("返回主選單");
+        btnBackMain.setBounds(210, 80, 160, 30); add(btnBackMain);
+
+        JButton btnLogoutEmp = new JButton("員工登出");
+        btnLogoutEmp.setBounds(120, 130, 160, 30); add(btnLogoutEmp);
+
+        // 先登入員工，再從這裡進管理員登入
+        btnAdminLogin.addActionListener(e -> {
+            new AdminLogin(this).setVisible(true);  // 傳入返回頁
+            setVisible(false);                      // 暫時隱藏員工頁
+        });
+
+        btnBackMain.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+
+        btnLogoutEmp.addActionListener(e -> {
+            Tool.clearEmployee();
+            new RoleSelector().setVisible(true);
+            dispose();
+        });
+    }
+}

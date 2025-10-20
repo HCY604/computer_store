@@ -1,0 +1,73 @@
+package dao.impl;
+
+import dao.AttendanceDao;
+import model.Attendance;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+public class AttendanceDaoImpl implements AttendanceDao {
+
+    @Override
+    public int clockIn(int employeeId) {
+        String sql = "INSERT INTO attendance(employee_id, clock_in) VALUES(?, NOW())";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setInt(1, employeeId);
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) { e.printStackTrace(); }
+        return 0;
+    }
+
+    @Override
+    public void clockOut(int attendanceId) {
+        String sql = "UPDATE attendance SET clock_out=NOW(), seconds=TIMESTAMPDIFF(SECOND, clock_in, NOW()), paid_amount=TIMESTAMPDIFF(SECOND, clock_in, NOW()) WHERE id=?";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ps.setInt(1, attendanceId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public void settleRange(int employeeId, Date from, Date to) {
+        String sql = "UPDATE attendance SET settled=1 WHERE employee_id=? AND settled=0 AND clock_in>=? AND clock_out<=?";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ps.setInt(1, employeeId);
+            ps.setTimestamp(2, new Timestamp(from.getTime()));
+            ps.setTimestamp(3, new Timestamp(to.getTime()));
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public List<Attendance> findUnsettled(int employeeId, Date from, Date to) {
+        List<Attendance> list = new ArrayList<>();
+        String sql = "SELECT id,employee_id,clock_in,clock_out,seconds,paid_amount,settled FROM attendance WHERE employee_id=? AND settled=0 AND clock_in>=? AND (clock_out IS NULL OR clock_out<=?)";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ps.setInt(1, employeeId);
+            ps.setTimestamp(2, new Timestamp(from.getTime()));
+            ps.setTimestamp(3, new Timestamp(to.getTime()));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Attendance a = new Attendance();
+                a.setId(rs.getInt("id"));
+                a.setEmployeeId(rs.getInt("employee_id"));
+                a.setClockIn(rs.getTimestamp("clock_in"));
+                a.setClockOut(rs.getTimestamp("clock_out"));
+                a.setSeconds(rs.getInt("seconds"));
+                a.setPaidAmount(rs.getInt("paid_amount"));
+                a.setSettled(rs.getInt("settled"));
+                list.add(a);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+}

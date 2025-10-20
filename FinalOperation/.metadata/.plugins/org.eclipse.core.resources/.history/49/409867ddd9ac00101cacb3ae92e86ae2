@@ -1,0 +1,62 @@
+package dao.impl;
+
+import dao.AdminDao;
+import model.AdminUser;
+import util.DbConnection;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class AdminDaoImpl implements AdminDao {
+
+    @Override
+    public AdminUser login(String username, String password, String pin) {
+        String sql =
+            "SELECT id, username, password, pin AS security_pin, balance " + // alias 給你原程式使用
+            "FROM admin_user " +
+            "WHERE username=? AND password=? AND pin=?";
+
+        try (Connection conn = DbConnection.getDb();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, pin);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    AdminUser a = new AdminUser();
+                    a.setId(rs.getInt("id"));
+                    a.setUsername(rs.getString("username"));
+                    a.setPassword(rs.getString("password"));
+                    a.setPin(rs.getString("security_pin")); // 也可用 rs.getString("pin")
+                    a.setBalance(rs.getInt("balance"));
+                    return a;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /** ★ 補上這個方法：查詢管理員目前資金餘額 */
+    @Override
+    public int getBalance(int adminId) {
+        String sql = "SELECT balance FROM admin_user WHERE id=?";
+        try (Connection conn = DbConnection.getDb();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, adminId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0; // 查無或錯誤時回 0，避免 NPE
+    }
+}

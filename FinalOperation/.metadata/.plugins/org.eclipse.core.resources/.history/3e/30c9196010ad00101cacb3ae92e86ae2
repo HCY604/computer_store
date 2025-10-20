@@ -1,0 +1,9 @@
+package dao;
+import model.Employee;
+import java.util.List;
+public interface EmployeeDao {
+    Employee findByCode(String code);
+    void insert(Employee e);
+    void setActive(String code, boolean active);
+    List<Employee> findAll();
+}

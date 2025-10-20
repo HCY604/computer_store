@@ -1,0 +1,23 @@
+package util;
+
+import javax.swing.*;
+import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class UiKit {
+
+    public static void createBackButton(JFrame f, java.awt.event.ActionListener onBack) {
+        JButton back = new JButton("← 返回");
+        back.setBounds(20, 10, 80, 26);
+        back.addActionListener(onBack);
+        f.add(back);
+    }
+
+    public static void attachClockToTitle(JFrame f, String baseTitle) {
+        final DateTimeFormatter F = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        Timer t = new Timer(1000, e -> f.setTitle(baseTitle + "   " + LocalDateTime.now().format(F)));
+        t.setRepeats(true);
+        t.start();
+    }
+}

@@ -1,0 +1,53 @@
+package controller;
+
+import model.Member;
+import service.MemberService;
+import service.impl.MemberServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class MemberRegister extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private JTextField tName, tUser, tPass, tAddr, tPhone;
+
+    public MemberRegister(JFrame back) {
+        this.back = back;
+        setSize(440, 340);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "會員註冊");
+        UiKit.createBackButton(this, e -> { if (back!=null) back.setVisible(true); dispose(); });
+
+        int y=40;
+        addLabel("姓名：", 40,y); tName = field(120,y); y+=40;
+        addLabel("帳號：", 40,y); tUser = field(120,y); y+=40;
+        addLabel("密碼：", 40,y); tPass = field(120,y); y+=40;
+        addLabel("地址：", 40,y); tAddr = field(120,y); y+=40;
+        addLabel("電話：", 40,y); tPhone = field(120,y); y+=50;
+
+        JButton btn = new JButton("送出註冊"); btn.setBounds(120,y,120,28); add(btn);
+        btn.addActionListener(e -> doRegister());
+    }
+
+    private void addLabel(String s,int x,int y){ JLabel l=new JLabel(s); l.setBounds(x,y,60,24); add(l); }
+    private JTextField field(int x,int y){ JTextField t=new JTextField(); t.setBounds(x,y,240,24); add(t); return t; }
+
+    private void doRegister() {
+        String name=tName.getText().trim(), user=tUser.getText().trim(), pass=tPass.getText().trim(),
+               addr=tAddr.getText().trim(), phone=tPhone.getText().trim();
+        if (name.isEmpty()||user.isEmpty()||pass.isEmpty()){ JOptionPane.showMessageDialog(this,"姓名/帳號/密碼必填"); return; }
+        if (!phone.matches("^09\\d{8}$")) { JOptionPane.showMessageDialog(this,"手機需 09 開頭且 10 碼"); return; }
+        MemberService svc = new MemberServiceImpl();
+        if (svc.usernameExists(user)) { JOptionPane.showMessageDialog(this,"帳號已存在"); return; }
+        Member m = new Member();
+        m.setName(name); m.setUsername(user); m.setPassword(pass); m.setAddress(addr); m.setPhone(phone);
+        svc.register(m);
+        JOptionPane.showMessageDialog(this,"註冊成功，請登入");
+        new MemberLogin(back).setVisible(true);
+        dispose();
+    }
+}

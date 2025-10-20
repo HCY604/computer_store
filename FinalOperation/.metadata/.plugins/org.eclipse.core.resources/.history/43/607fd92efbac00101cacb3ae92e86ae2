@@ -1,0 +1,31 @@
+package service.impl;
+
+import dao.EmployeeDao;
+import dao.impl.EmployeeDaoImpl;
+import model.Employee;
+import service.EmployeeService;
+
+import java.util.List;
+
+public class EmployeeServiceImpl implements EmployeeService {
+    private final EmployeeDao dao = new EmployeeDaoImpl();
+
+    @Override public Employee loginByCode(String empCode) { return dao.loginByCode(empCode); }
+
+    @Override
+    public void hire(Employee e) throws IllegalArgumentException {
+        if (e == null) throw new IllegalArgumentException("員工資料不可為空");
+        if (e.getName()==null || e.getName().trim().isEmpty()) throw new IllegalArgumentException("姓名不可空白");
+        if (e.getEmpCode()==null || e.getEmpCode().trim().isEmpty()) throw new IllegalArgumentException("員工編號不可空白");
+        if (e.getPhone()!=null && !e.getPhone().isEmpty() && !e.getPhone().matches("^09\\d{8}$"))
+            throw new IllegalArgumentException("手機需為 09 開頭且共 10 碼");
+        if (dao.empCodeExists(e.getEmpCode())) throw new IllegalArgumentException("員工編號已存在");
+        dao.hire(e);
+    }
+
+    @Override public void fire(int employeeId) { dao.fire(employeeId); }
+
+    @Override public List<Employee> listActive() { return dao.listActive(); }
+
+    @Override public boolean verifyAdmin(int employeeId, String adminPassword) { return dao.checkAdminPassword(employeeId, adminPassword); }
+}

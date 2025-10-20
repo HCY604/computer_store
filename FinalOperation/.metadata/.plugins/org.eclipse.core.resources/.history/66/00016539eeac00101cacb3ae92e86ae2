@@ -1,0 +1,61 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+
+import javax.swing.*;
+
+public class HireEmployeeUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final EmployeeService empSvc = new EmployeeServiceImpl();
+    private final Runnable onDone;
+
+    private JTextField txtName, txtEmpCode, txtPhone, txtAdminPwd;
+
+    public HireEmployeeUi(Runnable onDone) {
+        this.onDone = onDone;
+        setTitle("新增員工");
+        setSize(420, 280);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("姓名："); l1.setBounds(30, 30, 80, 25); add(l1);
+        txtName = new JTextField(); txtName.setBounds(110, 30, 250, 25); add(txtName);
+
+        JLabel l2 = new JLabel("員工編號："); l2.setBounds(30, 70, 80, 25); add(l2);
+        txtEmpCode = new JTextField(); txtEmpCode.setBounds(110, 70, 250, 25); add(txtEmpCode);
+
+        JLabel l3 = new JLabel("手機："); l3.setBounds(30, 110, 80, 25); add(l3);
+        txtPhone = new JTextField(); txtPhone.setBounds(110, 110, 250, 25); add(txtPhone);
+
+        JLabel l4 = new JLabel("管理員密碼："); l4.setBounds(30, 150, 80, 25); add(l4);
+        txtAdminPwd = new JTextField(); txtAdminPwd.setBounds(110, 150, 250, 25); add(txtAdminPwd);
+
+        JButton btnOk = new JButton("新增"); btnOk.setBounds(110, 200, 100, 28); add(btnOk);
+        JButton btnClose = new JButton("關閉"); btnClose.setBounds(260, 200, 100, 28); add(btnClose);
+
+        btnOk.addActionListener(e -> doHire());
+        btnClose.addActionListener(e -> dispose());
+    }
+
+    private void doHire() {
+        try {
+            Employee e = new Employee();
+            e.setName(txtName.getText().trim());
+            e.setEmpCode(txtEmpCode.getText().trim());
+            e.setPhone(txtPhone.getText().trim());
+            String ap = txtAdminPwd.getText().trim();
+            e.setAdminPassword(ap.isEmpty()?null:ap);
+            e.setActive(true);
+
+            empSvc.hire(e);
+            JOptionPane.showMessageDialog(this, "新增完成");
+            if (onDone!=null) onDone.run();
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "失敗：" + ex.getMessage());
+        }
+    }
+}

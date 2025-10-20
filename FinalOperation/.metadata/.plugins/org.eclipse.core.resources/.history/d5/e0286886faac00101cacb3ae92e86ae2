@@ -1,0 +1,20 @@
+package vo;
+
+public class DailyFinanceVo {
+    private String bizDate;
+    private int salesAmount;   // 營收（goods）
+    private int procureCost;   // 進貨成本（procurement）
+    private int payrollCost;   // 人事成本（payroll_record）
+    private int netProfit;     // 淨利 = sales - procure - payroll
+
+    public String getBizDate() { return bizDate; }
+    public void setBizDate(String bizDate) { this.bizDate = bizDate; }
+    public int getSalesAmount() { return salesAmount; }
+    public void setSalesAmount(int salesAmount) { this.salesAmount = salesAmount; }
+    public int getProcureCost() { return procureCost; }
+    public void setProcureCost(int procureCost) { this.procureCost = procureCost; }
+    public int getPayrollCost() { return payrollCost; }
+    public void setPayrollCost(int payrollCost) { this.payrollCost = payrollCost; }
+    public int getNetProfit() { return netProfit; }
+    public void setNetProfit(int netProfit) { this.netProfit = netProfit; }
+}

@@ -1,0 +1,70 @@
+package dao.impl;
+
+import dao.EmployeeDao;
+import model.Employee;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class EmployeeDaoImpl implements EmployeeDao {
+
+    @Override
+    public void insert(Employee e) {
+        String sql = "INSERT INTO employee(emp_code, username, password, name, phone, is_active, hire_date) " +
+                     "VALUES(?,?,?,?,?,1,NOW())";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, e.getEmpCode());
+            ps.setString(2, e.getUsername());
+            ps.setString(3, e.getPassword());
+            ps.setString(4, e.getName());
+            ps.setString(5, e.getPhone());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) e.setId(rs.getInt(1));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT 1 FROM employee WHERE username=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            return true; // 失敗時保守處理，避免重複帳號
+        }
+    }
+
+    @Override
+    public Employee login(String username, String password) {
+        String sql = "SELECT id, emp_code, username, password, name, phone, is_active, hire_date " +
+                     "FROM employee WHERE username=? AND password=? AND is_active=1";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Employee e = new Employee();
+                    e.setId(rs.getInt("id"));
+                    e.setEmpCode(rs.getString("emp_code"));
+                    e.setUsername(rs.getString("username"));
+                    e.setPassword(rs.getString("password"));
+                    e.setName(rs.getString("name"));
+                    e.setPhone(rs.getString("phone"));
+                    e.setActive(rs.getBoolean("is_active"));
+                    e.setHireDate(rs.getTimestamp("hire_date"));
+                    return e;
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+}

@@ -1,0 +1,48 @@
+package model;
+
+import java.util.Date;
+
+public class Employee {
+    private Integer id;
+    private String empCode;     // 員工代碼
+    private String username;
+    private String password;
+    private String name;
+    private String phone;
+    private boolean active;
+    private Date hireDate;
+
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
+
+    public String getEmpCode() { return empCode; }
+    public void setEmpCode(String empCode) { this.empCode = empCode; }
+
+    // ---- 別名（為了相容你現有呼叫 getEmployeeCode/setEmployeeCode）----
+    public String getEmployeeCode() { return getEmpCode(); }
+    public void setEmployeeCode(String code) { setEmpCode(code); }
+    // ----------------------------------------------------------------------
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+
+    public Date getHireDate() { return hireDate; }
+    public void setHireDate(Date hireDate) { this.hireDate = hireDate; }
+
+    @Override
+    public String toString() {
+        return (name != null ? name : username) + " (" + empCode + ")";
+    }
+}

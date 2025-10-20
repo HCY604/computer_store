@@ -1,0 +1,107 @@
+package controller;
+
+import model.AdminUser;
+import model.Product;
+import service.ProcurementService;
+import service.ProductService;
+import service.impl.ProcurementServiceImpl;
+import service.impl.ProductServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin;
+    private final Runnable onBalanceRefresh;
+
+    private final ProductService productSvc = new ProductServiceImpl();
+    private final ProcurementService procSvc = new ProcurementServiceImpl();
+
+    private JComboBox<String> cboCategory;
+    private JComboBox<Product> cboProduct;
+    private JTextField txtShelfPrice, txtStock, txtReorderPoint;
+    private JSpinner spQty;
+
+    public ProcurementUi(AdminUser admin, Runnable onBalanceRefresh) {
+        this.admin = admin;
+        this.onBalanceRefresh = onBalanceRefresh;
+
+        setTitle("管理員採購");
+        setSize(620, 320);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel lc = new JLabel("類別："); lc.setBounds(20, 20, 60, 24); add(lc);
+        cboCategory = new JComboBox<>(); cboCategory.setBounds(80, 20, 180, 24); add(cboCategory);
+
+        JLabel l0 = new JLabel("商品："); l0.setBounds(280, 20, 60, 24); add(l0);
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(340, 20, 250, 24); add(cboProduct);
+
+        JLabel l1 = new JLabel("售價："); l1.setBounds(20, 70, 60, 24); add(l1);
+        txtShelfPrice = new JTextField(); txtShelfPrice.setBounds(80, 70, 100, 24); txtShelfPrice.setEditable(false); add(txtShelfPrice);
+
+        JLabel l2 = new JLabel("庫存："); l2.setBounds(200, 70, 60, 24); add(l2);
+        txtStock = new JTextField(); txtStock.setBounds(250, 70, 80, 24); txtStock.setEditable(false); add(txtStock);
+
+        JLabel l3 = new JLabel("安全存量："); l3.setBounds(350, 70, 80, 24); add(l3);
+        txtReorderPoint = new JTextField(); txtReorderPoint.setBounds(430, 70, 100, 24); txtReorderPoint.setEditable(false); add(txtReorderPoint);
+
+        JLabel l4 = new JLabel("進貨量："); l4.setBounds(20, 120, 60, 24); add(l4);
+        spQty = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1)); spQty.setBounds(80, 120, 100, 24); add(spQty);
+
+        JButton btnDo = new JButton("執行採購"); btnDo.setBounds(200, 120, 120, 24); add(btnDo);
+        JButton btnClose = new JButton("關閉"); btnClose.setBounds(340, 120, 120, 24); add(btnClose);
+
+        cboCategory.addActionListener(e -> loadProducts());
+        cboProduct.addActionListener(e -> fillCurrentInfo());
+        btnDo.addActionListener(e -> doProcure());
+        btnClose.addActionListener(e -> dispose());
+
+        loadCategories();
+    }
+
+    private void loadCategories() {
+        DefaultComboBoxModel<String> m = new DefaultComboBoxModel<>();
+        for (String c : productSvc.listCategories()) m.addElement(c);
+        cboCategory.setModel(m);
+        loadProducts();
+    }
+
+    private void loadProducts() {
+        String cat = (String) cboCategory.getSelectedItem();
+        DefaultComboBoxModel<Product> m = new DefaultComboBoxModel<>();
+        List<Product> list = (cat==null) ? java.util.Collections.emptyList() : productSvc.listByCategory(cat);
+        for (Product p : list) m.addElement(p);
+        cboProduct.setModel(m);
+        fillCurrentInfo();
+    }
+
+    private void fillCurrentInfo() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { txtShelfPrice.setText(""); txtStock.setText(""); txtReorderPoint.setText(""); return; }
+        Product fresh = productSvc.getById(p.getId());
+        if (fresh != null) p = fresh;
+        txtShelfPrice.setText(String.valueOf(p.getShelfPrice()));
+        txtStock.setText(String.valueOf(p.getStockQty()));
+        txtReorderPoint.setText(String.valueOf(p.getReorderPoint()));
+    }
+
+    private void doProcure() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) { JOptionPane.showMessageDialog(this, "沒有可採購的商品"); return; }
+        int qty = (int) spQty.getValue();
+        if (qty <= 0) { JOptionPane.showMessageDialog(this, "數量錯誤"); return; }
+
+        boolean ok = procSvc.procure(admin.getId(), p.getId(), qty);
+        if (ok) {
+            JOptionPane.showMessageDialog(this, "採購完成（成本=售價×70% 已扣管理員資金）");
+            if (onBalanceRefresh != null) onBalanceRefresh.run();
+            fillCurrentInfo();
+        } else {
+            JOptionPane.showMessageDialog(this, "採購失敗：可能資金不足");
+        }
+    }
+}

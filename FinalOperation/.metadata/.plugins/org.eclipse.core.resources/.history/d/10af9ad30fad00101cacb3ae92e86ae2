@@ -1,0 +1,24 @@
+package util;
+
+import javax.swing.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class UiKit {
+    private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+    public static void attachClockToTitle(JFrame f, String baseTitle) {
+        Timer t = new Timer(1000, e -> f.setTitle(baseTitle + " ｜ " + SDF.format(new Date())));
+        t.setRepeats(true);
+        t.start();
+        f.setTitle(baseTitle + " ｜ " + SDF.format(new Date()));
+    }
+
+    public static JButton createBackButton(JFrame f, java.awt.event.ActionListener onBack) {
+        JButton back = new JButton("← 返回");
+        back.setBounds(20, 10, 80, 26);
+        f.add(back);
+        back.addActionListener(onBack);
+        return back;
+    }
+}

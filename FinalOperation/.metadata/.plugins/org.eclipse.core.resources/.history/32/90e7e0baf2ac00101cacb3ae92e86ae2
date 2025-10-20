@@ -1,0 +1,148 @@
+package controller;
+
+import model.Employee;
+import service.FundService;
+import service.ReportService;
+import service.impl.FundServiceImpl;
+import service.impl.ReportServiceImpl;
+import util.UiKit;
+import vo.DailyFinanceVo;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.FileOutputStream;
+import java.util.List;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class AdminPanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Employee adminEmp;
+    private final JFrame employeeBackFrame;
+
+    private final FundService fundSvc = new FundServiceImpl();
+    private final ReportService reportSvc = new ReportServiceImpl();
+
+    private JLabel lblBalance, lblTotals;
+    private JPanel chartPanel;
+
+    public AdminPanel(Employee adminEmp, JFrame employeeBackFrame) {
+        this.adminEmp = adminEmp;
+        this.employeeBackFrame = employeeBackFrame;
+        buildUi();
+    }
+
+    private void buildUi() {
+        setSize(1040, 760);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "管理員面板 - " + adminEmp.getName() + "（" + adminEmp.getEmpCode() + "）");
+        UiKit.createBackButton(this, e -> { 
+            if (employeeBackFrame!=null) { employeeBackFrame.setVisible(true); dispose(); }
+            else { new EmployeePanel().setVisible(true); dispose(); }
+        });
+
+        lblBalance = new JLabel("公司資金餘額：" + fundSvc.getBalance());
+        lblBalance.setBounds(110, 10, 300, 24); add(lblBalance);
+
+        JButton btnProcure   = new JButton("採購進貨");     btnProcure.setBounds(20, 50, 120, 28); add(btnProcure);
+        JButton btnHire      = new JButton("新增員工");     btnHire.setBounds(150, 50, 120, 28); add(btnHire);
+        JButton btnFire      = new JButton("開除員工");     btnFire.setBounds(280, 50, 120, 28); add(btnFire);
+        JButton btnPayroll   = new JButton("薪資結清");     btnPayroll.setBounds(410, 50, 120, 28); add(btnPayroll);
+        JButton btnRefresh   = new JButton("刷新圖表");     btnRefresh.setBounds(540, 50, 120, 28); add(btnRefresh);
+        JButton btnExport    = new JButton("匯出 Excel");   btnExport.setBounds(670, 50, 120, 28); add(btnExport);
+        JButton btnLogoutAll = new JButton("登出到主選單"); btnLogoutAll.setBounds(800, 50, 160, 28); add(btnLogoutAll);
+
+        lblTotals = new JLabel("（統計顯示區）");
+        lblTotals.setBounds(20, 90, 960, 24); add(lblTotals);
+
+        chartPanel = new JPanel(new BorderLayout());
+        chartPanel.setBounds(20, 120, 980, 600);
+        chartPanel.setBorder(BorderFactory.createTitledBorder("營收 / 採購成本 / 人事成本 / 淨利（最近 30 天）"));
+        add(chartPanel);
+
+        btnProcure.addActionListener(e -> new ProcurementUi(adminEmp, this::refreshBalance).setVisible(true));
+        btnHire.addActionListener(e -> new HireEmployeeUi(this::refreshBalance).setVisible(true));
+        btnFire.addActionListener(e -> new FireEmployeeUi(this::refreshBalance).setVisible(true));
+        btnPayroll.addActionListener(e -> new PayrollSettlementUi(this::refreshBalance).setVisible(true));
+        btnRefresh.addActionListener(e -> drawChart());
+        btnExport.addActionListener(e -> exportExcel());
+        btnLogoutAll.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+
+        drawChart();
+    }
+
+    private void refreshBalance() { lblBalance.setText("公司資金餘額：" + fundSvc.getBalance()); drawChart(); }
+
+    private void drawChart() {
+        List<DailyFinanceVo> data = reportSvc.listDailyFinance(30);
+
+        // 彙總總額
+        int sumSales=0, sumProcure=0, sumPayroll=0, sumNet=0;
+        DefaultCategoryDataset ds = new DefaultCategoryDataset();
+        for (DailyFinanceVo v : data) {
+            ds.addValue(v.getSalesAmount(), "營收", v.getBizDate());
+            ds.addValue(v.getProcureCost(), "採購成本", v.getBizDate());
+            ds.addValue(v.getPayrollCost(), "人事成本", v.getBizDate());
+            ds.addValue(v.getNetProfit(), "淨利", v.getBizDate());
+            sumSales += v.getSalesAmount();
+            sumProcure += v.getProcureCost();
+            sumPayroll += v.getPayrollCost();
+            sumNet += v.getNetProfit();
+        }
+        lblTotals.setText(String.format("總營收：$%d   採購成本：$%d   人事成本：$%d   淨利潤：$%d",
+                sumSales, sumProcure, sumPayroll, sumNet));
+
+        JFreeChart chart = ChartFactory.createLineChart("每日營收/成本/淨利", "日期", "金額", ds);
+        ChartPanel cp = new ChartPanel(chart);
+        chartPanel.removeAll();
+        chartPanel.add(cp, BorderLayout.CENTER);
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+
+    private void exportExcel() {
+        List<DailyFinanceVo> data = reportSvc.listDailyFinance(365); // 匯一年
+
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("儲存 Excel");
+        fc.setSelectedFile(new java.io.File("DailySummary.xlsx"));
+        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sh = wb.createSheet("DailySummary");
+            int r = 0;
+            Row head = sh.createRow(r++);
+            head.createCell(0).setCellValue("日期");
+            head.createCell(1).setCellValue("營收");
+            head.createCell(2).setCellValue("採購成本");
+            head.createCell(3).setCellValue("人事成本");
+            head.createCell(4).setCellValue("淨利");
+
+            for (DailyFinanceVo v : data) {
+                Row row = sh.createRow(r++);
+                row.createCell(0).setCellValue(v.getBizDate());
+                row.createCell(1).setCellValue(v.getSalesAmount());
+                row.createCell(2).setCellValue(v.getProcureCost());
+                row.createCell(3).setCellValue(v.getPayrollCost());
+                row.createCell(4).setCellValue(v.getNetProfit());
+            }
+            for (int i=0;i<=4;i++) sh.autoSizeColumn(i);
+
+            try (FileOutputStream out = new FileOutputStream(fc.getSelectedFile())) {
+                wb.write(out);
+            }
+            JOptionPane.showMessageDialog(this, "匯出成功：" + fc.getSelectedFile().getAbsolutePath());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "匯出失敗：" + ex.getMessage());
+        }
+    }
+}

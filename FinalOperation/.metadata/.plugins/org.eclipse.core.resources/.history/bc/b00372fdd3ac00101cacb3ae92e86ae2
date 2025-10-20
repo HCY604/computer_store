@@ -1,0 +1,49 @@
+package controller;
+
+import vo.ReceiptVo;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+
+public class PrintReceipt extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public PrintReceipt(ReceiptVo vo) {
+        setTitle("列印收據");
+        setSize(520, 560);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("客戶：" + (vo.getMemberName() == null ? "-" : vo.getMemberName()) + " / " + (vo.getUsername()==null?"-":vo.getUsername()));
+        l1.setBounds(20, 20, 460, 24); add(l1);
+
+        JLabel l2 = new JLabel("時間：" + vo.getRecordTime());
+        l2.setBounds(20, 50, 460, 24); add(l2);
+
+        String[] cols = {"類別","商品","單價","數量","小計"};
+        DefaultTableModel m = new DefaultTableModel(cols, 0){
+            public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable table = new JTable(m);
+        for (var it : vo.getItems()) {
+            m.addRow(new Object[]{ it.getCategoryName(), it.getProductName(), it.getUnitPrice(), it.getQuantity(), it.getLineTotal() });
+        }
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBounds(20, 90, 460, 340); add(sp);
+
+        JLabel l3 = new JLabel("總額：" + vo.getTotal());
+        l3.setBounds(20, 440, 200, 24); add(l3);
+        JLabel l4 = new JLabel("付款：" + vo.getCash());
+        l4.setBounds(200, 440, 200, 24); add(l4);
+        JLabel l5 = new JLabel("找零：" + vo.getChange());
+        l5.setBounds(360, 440, 200, 24); add(l5);
+
+        JButton btn = new JButton("列印");
+        btn.setBounds(380, 470, 100, 28); add(btn);
+        btn.addActionListener(e -> {
+            try { table.print(); } catch (Exception ex) { JOptionPane.showMessageDialog(this, "列印失敗"); }
+        });
+    }
+}

@@ -1,0 +1,29 @@
+package service.impl;
+
+import dao.ReportPayDao;
+import dao.impl.ReportDaoImpl;
+import service.ReportPayService;
+import vo.PayrollDueVo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class ReportPayServiceImpl implements ReportPayService {
+    private final ReportPayDao dao = new ReportDaoPayImpl();
+
+    @Override
+    public int getCompanyBalance() {
+        return dao.getCompanyBalance();
+    }
+
+    @Override
+    public List<PayrollDueVo> listPayrollDue(boolean onlyDue) {
+        List<PayrollDueVo> all = dao.listPayrollDue();
+        if (!onlyDue) return all;
+        List<PayrollDueVo> out = new ArrayList<PayrollDueVo>();
+        for (PayrollDueVo v : all) {
+            if (v.getDueAmount() > 0) out.add(v);
+        }
+        return out;
+    }
+}

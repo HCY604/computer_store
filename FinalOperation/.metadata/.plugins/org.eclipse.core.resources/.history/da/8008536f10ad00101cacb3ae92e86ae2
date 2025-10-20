@@ -1,0 +1,5 @@
+package dao;
+import model.Goods;
+public interface GoodsDao {
+    void insert(Goods g);
+}

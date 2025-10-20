@@ -1,0 +1,5 @@
+package dao;
+public interface FundDao {
+    int getBalance();
+    void addTxn(String type, int amount, String memo, Integer refId);
+}

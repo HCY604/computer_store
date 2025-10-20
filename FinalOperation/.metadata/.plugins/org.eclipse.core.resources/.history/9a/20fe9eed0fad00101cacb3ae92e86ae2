@@ -1,0 +1,55 @@
+package util;
+
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.RenderingHints;
+
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.XYPlot;
+
+public final class ChartFont {
+    private ChartFont() {}
+
+    private static final String[] CANDS = {
+            "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang TC",
+            "PMingLiU", "SimSun", "Arial Unicode MS", "SansSerif"
+    };
+
+    public static Font pick(int style, int size) {
+        var env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        var installed = java.util.Set.of(env.getAvailableFontFamilyNames());
+        for (String f : CANDS) if (installed.contains(f)) return new Font(f, style, size);
+        return new Font("SansSerif", style, size);
+    }
+
+
+    public static void applyCJK(JFreeChart chart) {
+        if (chart == null) return;
+        var title  = pick(Font.BOLD, 18);
+        var label  = pick(Font.PLAIN, 12);
+        var tick   = pick(Font.PLAIN, 11);
+        var legend = pick(Font.PLAIN, 12);
+
+        if (chart.getTitle() != null) chart.getTitle().setFont(title);
+        if (chart.getLegend() != null) chart.getLegend().setItemFont(legend);
+
+        chart.setBackgroundPaint(java.awt.Color.WHITE);
+        chart.getPlot().setBackgroundPaint(java.awt.Color.WHITE);
+
+        chart.getRenderingHints().put(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        if (chart.getPlot() instanceof CategoryPlot p) {
+            CategoryAxis x = p.getDomainAxis(); ValueAxis y = p.getRangeAxis();
+            if (x != null) { x.setLabelFont(label); x.setTickLabelFont(tick); }
+            if (y != null) { y.setLabelFont(label); y.setTickLabelFont(tick); }
+        } else if (chart.getPlot() instanceof XYPlot p) {
+            ValueAxis x = p.getDomainAxis(); ValueAxis y = p.getRangeAxis();
+            if (x != null) { x.setLabelFont(label); x.setTickLabelFont(tick); }
+            if (y != null) { y.setLabelFont(label); y.setTickLabelFont(tick); }
+        }
+    }
+}

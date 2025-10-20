@@ -1,0 +1,47 @@
+package dao.impl;
+
+import dao.ReportDao;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.*;
+
+public class ReportDaoImpl implements ReportDao {
+
+    @Override
+    public List<Map<String, Object>> dailyProfit() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT biz_date, revenue, cogs, gross_profit FROM v_daily_profit ORDER BY biz_date";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String,Object> m = new LinkedHashMap<>();
+                m.put("biz_date", rs.getDate("biz_date"));
+                m.put("revenue", rs.getInt("revenue"));
+                m.put("cogs", rs.getInt("cogs"));
+                m.put("gross_profit", rs.getInt("gross_profit"));
+                list.add(m);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    @Override
+    public List<Map<String, Object>> personnelCost() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT biz_date, payroll_paid, seconds_worked FROM v_personnel_cost ORDER BY biz_date";
+        try {
+            PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String,Object> m = new LinkedHashMap<>();
+                m.put("biz_date", rs.getDate("biz_date"));
+                m.put("payroll_paid", rs.getInt("payroll_paid"));
+                m.put("seconds_worked", rs.getInt("seconds_worked"));
+                list.add(m);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+}

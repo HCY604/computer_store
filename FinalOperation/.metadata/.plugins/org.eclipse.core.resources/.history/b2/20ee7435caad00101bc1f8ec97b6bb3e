@@ -1,0 +1,208 @@
+//package controller;
+//
+//import util.DbConnection;
+//import util.UiKit;
+//
+//import javax.swing.*;
+//import javax.swing.table.DefaultTableModel;
+//import java.awt.*;
+//import java.sql.*;
+//
+//
+//public class AdminPayrollWindow extends JFrame {
+//    private static final long serialVersionUID = 1L;
+//
+//    private final JFrame back;
+//    private JTable table;
+//    private DefaultTableModel model;
+//    private JCheckBox chkOnlyDue;
+//    private JLabel lblBalance;
+//
+//    public AdminPayrollWindow(JFrame back) {
+//        this.back = back;
+//
+//        setSize(900, 620);
+//        setLocationRelativeTo(null);
+//        setLayout(null);
+//        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+//
+//        UiKit.attachClockToTitle(this, "未結薪資總覽");
+//        UiKit.createBackButton(this, e -> { if (back != null) back.setVisible(true); dispose(); });
+//
+//        // 公司餘額
+//        lblBalance = new JLabel("公司餘額：$0");
+//        lblBalance.setBounds(140, 20, 260, 26);
+//        add(lblBalance);
+//
+//        // 篩選 + 刷新 + 結清
+//        chkOnlyDue = new JCheckBox("只顯示有未結");
+//        chkOnlyDue.setBounds(420, 20, 120, 26);
+//        add(chkOnlyDue);
+//
+//        JButton btnRefresh = new JButton("重新整理");
+//        btnRefresh.setBounds(550, 20, 100, 26);
+//        add(btnRefresh);
+//
+//        JButton btnPay = new JButton("結清所選員工");
+//        btnPay.setBounds(660, 20, 130, 26);
+//        add(btnPay);
+//
+//        // 表格
+//        String[] cols = {"員工ID","員工編號","姓名","是否管理員","已工作秒數","應付金額","已發金額","未結金額"};
+//        model = new DefaultTableModel(cols, 0){
+//            public boolean isCellEditable(int r, int c){ return false; }
+//            public Class<?> getColumnClass(int c){
+//                if (c>=4) return Integer.class;
+//                if (c==3) return Boolean.class;
+//                return String.class;
+//            }
+//        };
+//        table = new JTable(model);
+//        table.setAutoCreateRowSorter(true);
+//        JScrollPane sp = new JScrollPane(table);
+//        sp.setBounds(20, 60, 850, 520);
+//        add(sp);
+//
+//        // 事件
+//        btnRefresh.addActionListener(e -> reload());
+//        chkOnlyDue.addActionListener(e -> reload());
+//        btnPay.addActionListener(e -> doPaySelected());
+//
+//        // 初次載入
+//        reload();
+//    }
+//
+//    /** 讀公司餘額 + 員工未結清單 */
+//    private void reload() {
+//        loadBalance();
+//        loadData();
+//    }
+//
+//    private void loadBalance() {
+//        String sql = "SELECT balance FROM fund_balance WHERE id=1";
+//        try (Connection c = DbConnection.getDb();
+//             PreparedStatement ps = c.prepareStatement(sql);
+//             ResultSet rs = ps.executeQuery()) {
+//            if (rs.next()) {
+//                int bal = rs.getInt(1);
+//                lblBalance.setText("公司餘額：$" + bal);
+//            }
+//        } catch (Exception ex) {
+//            JOptionPane.showMessageDialog(this, "讀取公司餘額失敗：" + ex.getMessage());
+//        }
+//    }
+//
+//    private void loadData() {
+//        model.setRowCount(0);
+//
+//        // seconds_worked：把未下班時計算到 NOW()
+//        // rate_per_sec：管理員 10，一般 1
+//        // paid_total：把 PAYROLL 交易金額（負數）轉為正數累加
+//        String sql =
+//            "SELECT e.id, e.emp_code, e.name, e.is_admin, " +
+//            " COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) AS seconds_worked, " +
+//            " CASE WHEN e.is_admin=1 THEN 10 ELSE 1 END AS rate_per_sec, " +
+//            " (COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) * " +
+//            "   (CASE WHEN e.is_admin=1 THEN 10 ELSE 1 END)) AS should_pay, " +
+//            " COALESCE((SELECT -SUM(t.amount) FROM fund_txn t WHERE t.txn_type='PAYROLL' AND t.ref_id=e.id),0) AS paid_total " +
+//            "FROM employee e " +
+//            "LEFT JOIN attendance a ON a.emp_id = e.id " +
+//            "GROUP BY e.id, e.emp_code, e.name, e.is_admin " +
+//            "ORDER BY e.id";
+//
+//        boolean onlyDue = chkOnlyDue.isSelected();
+//
+//        try (Connection c = DbConnection.getDb();
+//             PreparedStatement ps = c.prepareStatement(sql);
+//             ResultSet rs = ps.executeQuery()) {
+//            while (rs.next()) {
+//                int id = rs.getInt("id");
+//                String code = rs.getString("emp_code");
+//                String name = rs.getString("name");
+//                boolean admin = rs.getBoolean("is_admin");
+//                int secs = rs.getInt("seconds_worked");
+//                int should = rs.getInt("should_pay");
+//                int paid = rs.getInt("paid_total");
+//                int due = should - paid;
+//
+//                if (!onlyDue || due > 0) {
+//                    model.addRow(new Object[]{String.valueOf(id), code, name, admin, secs, should, paid, due});
+//                }
+//            }
+//        } catch (Exception ex) {
+//            JOptionPane.showMessageDialog(this, "讀取未結薪資失敗：" + ex.getMessage());
+//        }
+//    }
+//
+//    /** 對選中員工做「結清」：新增 PAYROLL（負數），並扣公司餘額 */
+//    private void doPaySelected() {
+//        int viewRow = table.getSelectedRow();
+//        if (viewRow < 0) { JOptionPane.showMessageDialog(this, "請先選擇員工"); return; }
+//        int row = table.convertRowIndexToModel(viewRow);
+//
+//        int empId = Integer.parseInt((String)model.getValueAt(row, 0));
+//        String empCode = (String)model.getValueAt(row, 1);
+//        String name = (String)model.getValueAt(row, 2);
+//        int due = (Integer)model.getValueAt(row, 7);
+//
+//        if (due <= 0) { JOptionPane.showMessageDialog(this, "此員工沒有未結金額"); return; }
+//
+//        String input = JOptionPane.showInputDialog(this,
+//                "結清金額（預設為未結："+due+"）", String.valueOf(due));
+//        if (input == null) return;
+//
+//        int pay;
+//        try { pay = Integer.parseInt(input.trim()); }
+//        catch (Exception ex) { JOptionPane.showMessageDialog(this,"金額格式錯誤"); return; }
+//        if (pay <= 0) { JOptionPane.showMessageDialog(this,"金額需 > 0"); return; }
+//        if (pay > due) { JOptionPane.showMessageDialog(this,"不可超過未結金額"); return; }
+//
+//        // 檢查公司餘額
+//        int balance = getBalance();
+//        if (balance < pay) { JOptionPane.showMessageDialog(this,"公司餘額不足"); return; }
+//
+//        // 執行交易
+//        try (Connection c = DbConnection.getDb()) {
+//            c.setAutoCommit(false);
+//            try {
+//                // 新增 fund_txn（支出：金額為負）
+//                try (PreparedStatement ps = c.prepareStatement(
+//                        "INSERT INTO fund_txn(txn_type,amount,memo,ref_id) VALUES('PAYROLL', ?, ?, ?)")) {
+//                    ps.setInt(1, -pay);
+//                    ps.setString(2, "薪資給付 - " + empCode + " / " + name);
+//                    ps.setInt(3, empId);
+//                    ps.executeUpdate();
+//                }
+//                // 扣公司餘額
+//                try (PreparedStatement ps = c.prepareStatement(
+//                        "UPDATE fund_balance SET balance = balance - ? WHERE id=1")) {
+//                    ps.setInt(1, pay);
+//                    ps.executeUpdate();
+//                }
+//                c.commit();
+//                JOptionPane.showMessageDialog(this, "已結清 $" + pay + " 給 " + empCode + "（" + name + "）");
+//            } catch (Exception x) {
+//                c.rollback();
+//                throw x;
+//            } finally {
+//                c.setAutoCommit(true);
+//            }
+//        } catch (Exception ex) {
+//            JOptionPane.showMessageDialog(this, "結清失敗：" + ex.getMessage());
+//            return;
+//        }
+//
+//        // 重新整理畫面
+//        reload();
+//    }
+//
+//    private int getBalance() {
+//        String sql = "SELECT balance FROM fund_balance WHERE id=1";
+//        try (Connection c = DbConnection.getDb();
+//             PreparedStatement ps = c.prepareStatement(sql);
+//             ResultSet rs = ps.executeQuery()) {
+//            if (rs.next()) return rs.getInt(1);
+//        } catch (Exception ignore) {}
+//        return 0;
+//    }
+//}

@@ -1,0 +1,41 @@
+package controller;
+
+import util.UiKit;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+
+public class RoleSelector extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public RoleSelector() {
+        // 視窗基本屬性
+        setTitle("入口");
+        setSize(360, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        // 標題時鐘
+        UiKit.attachClockToTitle(this, "入口");
+
+        // 兩個入口按鈕
+        JButton btnMember = new JButton("會員入口");
+        btnMember.setBounds(40, 60, 120, 36);
+        add(btnMember);
+
+        JButton btnEmp = new JButton("員工入口");
+        btnEmp.setBounds(190, 60, 120, 36);
+        add(btnEmp);
+
+        // 事件：進入會員或員工頁
+        btnMember.addActionListener(e -> {
+            new MemberLogin(this).setVisible(true);
+            this.setVisible(false);
+        });
+        btnEmp.addActionListener(e -> {
+            new EmployeeLogin(this).setVisible(true);
+            this.setVisible(false);
+        });
+    }
+}

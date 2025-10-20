@@ -1,0 +1,101 @@
+package dao.impl;
+
+import dao.EmployeeDao;
+import model.Employee;
+import util.DbConnection;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class EmployeeDaoImpl implements EmployeeDao {
+
+    @Override
+    public Employee loginByCode(String empCode) {
+        String sql = "SELECT id,name,emp_code,phone,active,admin_password FROM employee WHERE emp_code=? AND active=1";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, empCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Employee e = new Employee();
+                    e.setId(rs.getInt("id"));
+                    e.setName(rs.getString("name"));
+                    e.setEmpCode(rs.getString("emp_code"));
+                    e.setPhone(rs.getString("phone"));
+                    e.setActive(rs.getBoolean("active"));
+                    e.setAdminPassword(rs.getString("admin_password"));
+                    return e;
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    @Override
+    public void hire(Employee e) {
+        String sql = "INSERT INTO employee(name,emp_code,phone,active,admin_password) VALUES(?,?,?,?,?)";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, e.getName());
+            ps.setString(2, e.getEmpCode());
+            ps.setString(3, e.getPhone());
+            ps.setBoolean(4, e.isActive());
+            ps.setString(5, e.getAdminPassword());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) e.setId(rs.getInt(1)); }
+        } catch (SQLException ex) { ex.printStackTrace(); }
+    }
+
+    @Override
+    public void fire(int employeeId) {
+        String sql = "UPDATE employee SET active=0 WHERE id=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, employeeId);
+            ps.executeUpdate();
+        } catch (SQLException ex) { ex.printStackTrace(); }
+    }
+
+    @Override
+    public boolean empCodeExists(String empCode) {
+        String sql = "SELECT 1 FROM employee WHERE emp_code=?";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setString(1, empCode);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return true;
+    }
+
+    @Override
+    public List<Employee> listActive() {
+        List<Employee> list = new ArrayList<>();
+        String sql = "SELECT id,name,emp_code,phone,active,admin_password FROM employee WHERE active=1 ORDER BY id";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Employee e = new Employee();
+                e.setId(rs.getInt("id"));
+                e.setName(rs.getString("name"));
+                e.setEmpCode(rs.getString("emp_code"));
+                e.setPhone(rs.getString("phone"));
+                e.setActive(rs.getBoolean("active"));
+                e.setAdminPassword(rs.getString("admin_password"));
+                list.add(e);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    @Override
+    public boolean checkAdminPassword(int employeeId, String adminPassword) {
+        String sql = "SELECT admin_password FROM employee WHERE id=? AND active=1";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, employeeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String real = rs.getString(1);
+                    return real != null && real.equals(adminPassword);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+}

@@ -1,0 +1,33 @@
+package service.impl;
+
+import dao.EmployeeDao;
+import dao.impl.EmployeeDaoImpl;
+import model.Employee;
+import service.EmployeeService;
+
+public class EmployeeServiceImpl implements EmployeeService {
+    private final EmployeeDao dao = new EmployeeDaoImpl();
+
+    @Override
+    public void register(Employee e) throws IllegalArgumentException {
+        if (e == null) throw new IllegalArgumentException("員工資料不可為空");
+        if (e.getEmpCode() == null || e.getEmpCode().trim().isEmpty())
+            throw new IllegalArgumentException("員工代碼不可空白");
+        if (e.getUsername() == null || e.getUsername().trim().isEmpty())
+            throw new IllegalArgumentException("帳號不可空白");
+        if (e.getPassword() == null || e.getPassword().trim().isEmpty())
+            throw new IllegalArgumentException("密碼不可空白");
+        if (e.getPhone() == null || !e.getPhone().matches("^09\\d{8}$"))
+            throw new IllegalArgumentException("手機需為 09 開頭且共 10 碼");
+
+        if (dao.existsByUsername(e.getUsername()))
+            throw new IllegalArgumentException("帳號已存在");
+
+        dao.insert(e);
+    }
+
+    @Override
+    public Employee login(String username, String password) {
+        return dao.login(username, password);
+    }
+}

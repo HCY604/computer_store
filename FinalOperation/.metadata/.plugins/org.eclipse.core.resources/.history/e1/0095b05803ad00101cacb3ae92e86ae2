@@ -1,0 +1,8 @@
+package dao;
+
+public interface FundDao {
+    int  getBalance();
+    void addIncome(int amount);                 // += amount
+    void addExpense(int amount);                // -= amount
+    void addTxn(String txnType, int amount, String memo, Integer refId);
+}

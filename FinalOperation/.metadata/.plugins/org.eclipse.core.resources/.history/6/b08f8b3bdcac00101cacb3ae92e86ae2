@@ -1,0 +1,21 @@
+package service.impl;
+
+import dao.ProductDao;
+import dao.impl.ProductDaoImpl;
+import model.Product;
+import service.ProductService;
+
+import java.util.List;
+
+public class ProductServiceImpl implements ProductService {
+    private final ProductDao dao = new ProductDaoImpl();
+
+    public List<String> listCategories() { return dao.listCategories(); }
+    public List<Product> listByCategory(String categoryName) { return dao.listByCategory(categoryName); }
+    public List<Product> listNeedRestock() { return dao.listNeedRestock(); }
+    public Product getByName(String productName) { return dao.findByName(productName); }
+    public void updateStock(int productId, int newQty) { dao.updateStock(productId, newQty); }
+    public boolean increaseStock(int productId, int qty) { return dao.increaseStock(productId, qty); }
+    public boolean decreaseStock(int productId, int qty) { return dao.decreaseStock(productId, qty); }
+    public void updatePrice(int productId, int newPrice) { dao.updatePrice(productId, newPrice); }
+}

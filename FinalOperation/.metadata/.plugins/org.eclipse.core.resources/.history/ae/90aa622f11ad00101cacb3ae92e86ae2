@@ -1,0 +1,31 @@
+package controller;
+
+import util.UiKit;
+
+import javax.swing.*;
+
+public class AdminPasswordDialog extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final Runnable onOk;
+
+    public AdminPasswordDialog(JFrame back, Runnable onOk) {
+        this.back=back; this.onOk=onOk;
+        setSize(360, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "管理員登入");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JLabel l=new JLabel("管理員密碼："); l.setBounds(40,60,100,24); add(l);
+        JPasswordField pf=new JPasswordField(); pf.setBounds(140,60,160,24); add(pf);
+        JButton btn=new JButton("登入"); btn.setBounds(140,100,90,28); add(btn);
+
+        btn.addActionListener(e -> {
+            String pwd=new String(pf.getPassword());
+            if ("123456".equals(pwd)) { onOk.run(); dispose(); }
+            else JOptionPane.showMessageDialog(this,"密碼錯誤");
+        });
+    }
+}

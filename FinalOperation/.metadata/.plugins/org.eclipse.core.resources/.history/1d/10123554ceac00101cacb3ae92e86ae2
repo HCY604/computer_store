@@ -1,0 +1,12 @@
+package dao;
+
+import model.Attendance;
+import java.util.Date;
+import java.util.List;
+
+public interface AttendanceDao {
+    int clockIn(int employeeId);
+    void clockOut(int attendanceId);
+    void settleRange(int employeeId, Date from, Date to); // 結清(from..to)內尚未結清的紀錄
+    List<Attendance> findUnsettled(int employeeId, Date from, Date to);
+}

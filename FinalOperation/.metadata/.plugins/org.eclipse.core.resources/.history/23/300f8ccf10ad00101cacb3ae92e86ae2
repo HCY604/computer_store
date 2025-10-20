@@ -1,0 +1,13 @@
+package service.impl;
+
+import dao.MemberDao;
+import dao.impl.MemberDaoImpl;
+import model.Member;
+import service.MemberService;
+
+public class MemberServiceImpl implements MemberService {
+    private final MemberDao dao = new MemberDaoImpl();
+    @Override public void register(Member m){ dao.insert(m); }
+    @Override public Member login(String u, String p){ return dao.login(u,p); }
+    @Override public boolean exists(String u){ return dao.existsUsername(u); }
+}

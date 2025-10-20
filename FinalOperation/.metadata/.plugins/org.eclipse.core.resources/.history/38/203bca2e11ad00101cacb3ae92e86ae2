@@ -1,0 +1,37 @@
+package controller;
+
+import util.UiKit;
+
+import javax.swing.*;
+
+public class AdminHome extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+
+    public AdminHome(JFrame back) {
+        this.back=back;
+        setSize(500, 320);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "管理員主頁");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JButton btnProc = new JButton("採購進貨");
+        JButton btnEmp  = new JButton("員工管理（新增/開除）");
+        JButton btnPay  = new JButton("發薪（人事成本）");
+        JButton btnRpt  = new JButton("營利報表 / 銷售占比");
+
+        btnProc.setBounds(40,80,180,32);
+        btnEmp .setBounds(250,80,180,32);
+        btnPay .setBounds(40,130,180,32);
+        btnRpt .setBounds(250,130,180,32);
+
+        add(btnProc); add(btnEmp); add(btnPay); add(btnRpt);
+
+        btnProc.addActionListener(e -> new ProcurementUi(() -> this.setVisible(true)).setVisible(true));
+        btnEmp .addActionListener(e -> new ManageEmployeesUi(this).setVisible(true));
+        btnPay .addActionListener(e -> new PayrollUi(this).setVisible(true));
+        btnRpt .addActionListener(e -> new AdminReportDashboard(this).setVisible(true));
+    }
+}

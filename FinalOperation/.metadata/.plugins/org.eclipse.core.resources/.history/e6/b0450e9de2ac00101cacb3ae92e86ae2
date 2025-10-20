@@ -1,0 +1,34 @@
+package vo;
+
+public class DailyProfitVo {
+    private String bizDate;     // yyyy-MM-dd
+    private int salesAmount;
+    private int procureCost;
+    private int grossProfit;
+	public String getBizDate() {
+		return bizDate;
+	}
+	public void setBizDate(String bizDate) {
+		this.bizDate = bizDate;
+	}
+	public int getSalesAmount() {
+		return salesAmount;
+	}
+	public void setSalesAmount(int salesAmount) {
+		this.salesAmount = salesAmount;
+	}
+	public int getProcureCost() {
+		return procureCost;
+	}
+	public void setProcureCost(int procureCost) {
+		this.procureCost = procureCost;
+	}
+	public int getGrossProfit() {
+		return grossProfit;
+	}
+	public void setGrossProfit(int grossProfit) {
+		this.grossProfit = grossProfit;
+	}
+
+    
+}

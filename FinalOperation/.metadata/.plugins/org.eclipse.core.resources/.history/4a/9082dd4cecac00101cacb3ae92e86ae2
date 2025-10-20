@@ -1,0 +1,10 @@
+package dao;
+
+import model.TimeSummary;
+
+public interface TimeLogDao {
+    boolean startShift(int employeeId);
+    boolean stopShift(int employeeId); // 計算秒數與金額
+    TimeSummary sumUnpaid(int employeeId);
+    boolean markPaid(int employeeId, int totalSeconds, int totalAmount); 
+}

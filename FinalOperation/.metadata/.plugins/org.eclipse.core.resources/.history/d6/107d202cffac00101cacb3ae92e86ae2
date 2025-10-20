@@ -1,0 +1,72 @@
+package controller;
+
+import model.Employee;
+import service.AttendanceService;
+import service.FundService;
+import service.impl.AttendanceServiceImpl;
+import service.impl.FundServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class EmployeePanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Employee emp;
+    private final JFrame back;
+    private Integer currentLogId = null;
+    private JLabel lblStatus, lblBalance;
+
+    public EmployeePanel(Employee emp, JFrame back) {
+        this.emp = emp;
+        this.back = back;
+        buildUi();
+    }
+
+    private void buildUi() {
+        setSize(520, 260);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "員工面板 - "+emp.getName()+"（"+emp.getEmpCode()+"）");
+        UiKit.createBackButton(this, e -> { if (back!=null) back.setVisible(true); dispose(); });
+
+        lblStatus = new JLabel("狀態：未上班"); lblStatus.setBounds(120,10,260,24); add(lblStatus);
+        lblBalance = new JLabel("公司資金餘額：$" + new FundServiceImpl().getBalance()); lblBalance.setBounds(120,34,260,24); add(lblBalance);
+
+        JButton btnIn = new JButton("上班打卡"); btnIn.setBounds(40,70,120,30); add(btnIn);
+        JButton btnOut= new JButton("下班打卡"); btnOut.setBounds(180,70,120,30); add(btnOut);
+
+        JButton btnToAdmin = new JButton("登入管理員"); btnToAdmin.setBounds(320,70,140,30); add(btnToAdmin);
+        JButton btnToShop  = new JButton("前往會員購買頁(展示)"); btnToShop.setBounds(40,120,220,30); add(btnToShop);
+
+        btnIn.addActionListener(e -> {
+            if (currentLogId!=null){ JOptionPane.showMessageDialog(this,"已上班中"); return; }
+            AttendanceService as = new AttendanceServiceImpl();
+            currentLogId = as.clockIn(emp.getId());
+            lblStatus.setText("狀態：上班中 (logId="+currentLogId+")");
+        });
+        btnOut.addActionListener(e -> {
+            if (currentLogId==null){ JOptionPane.showMessageDialog(this,"尚未上班"); return; }
+            AttendanceService as = new AttendanceServiceImpl();
+            as.clockOut(currentLogId);
+            currentLogId=null;
+            lblStatus.setText("狀態：已下班");
+        });
+
+        btnToAdmin.addActionListener(e -> {
+            if (!emp.isAdmin()) {
+                JOptionPane.showMessageDialog(this,"您非管理員，無權登入管理介面");
+                return;
+            }
+            new AdminLogin(this, emp).setVisible(true);
+            setVisible(false);
+        });
+
+        btnToShop.addActionListener(e -> new RoleSelector().setVisible(true));
+
+        // 顯示最新餘額
+        JButton btnRefresh = new JButton("更新餘額"); btnRefresh.setBounds(320,120,140,30); add(btnRefresh);
+        btnRefresh.addActionListener(e -> lblBalance.setText("公司資金餘額：$" + new FundServiceImpl().getBalance()));
+    }
+}

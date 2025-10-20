@@ -1,0 +1,34 @@
+package vo;
+
+public class DailyFinanceVo {
+    private String bizDate;     // yyyy-MM-dd
+    private int salesAmount;    // 銷售額（sum of line_total）
+    private int procureCost;    // 採購成本（本期採購總額）
+    private int payrollCost;    // 人事成本（秒薪累計，1元/秒）
+	public String getBizDate() {
+		return bizDate;
+	}
+	public void setBizDate(String bizDate) {
+		this.bizDate = bizDate;
+	}
+	public int getSalesAmount() {
+		return salesAmount;
+	}
+	public void setSalesAmount(int salesAmount) {
+		this.salesAmount = salesAmount;
+	}
+	public int getProcureCost() {
+		return procureCost;
+	}
+	public void setProcureCost(int procureCost) {
+		this.procureCost = procureCost;
+	}
+	public int getPayrollCost() {
+		return payrollCost;
+	}
+	public void setPayrollCost(int payrollCost) {
+		this.payrollCost = payrollCost;
+	}
+
+    
+}

@@ -1,0 +1,72 @@
+package controller;
+
+import model.AdminUser;
+import service.AdminService;
+import service.ReportService;
+import service.impl.AdminServiceImpl;
+import service.impl.ReportServiceImpl;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class AdminPanel extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin;
+    private final AdminService adminSvc = new AdminServiceImpl();
+    @SuppressWarnings("unused")
+    private final ReportService reportSvc = new ReportServiceImpl();
+
+    private JLabel lblBalance;
+    private JPanel chartPanel;
+
+    public AdminPanel(AdminUser a) {
+        this.admin = a;
+        setTitle("管理員面板 - " + a.getUsername());
+        setSize(900, 680);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        lblBalance = new JLabel("資金餘額：" + admin.getBalance());
+        lblBalance.setBounds(20, 20, 300, 24); add(lblBalance);
+
+        JButton btnProcure = new JButton("採購進貨");
+        btnProcure.setBounds(20, 60, 120, 28); add(btnProcure);
+
+        JButton btnPayroll = new JButton("結清薪資");
+        btnPayroll.setBounds(150, 60, 120, 28); add(btnPayroll);
+
+        JButton btnExport = new JButton("匯出Excel");
+        btnExport.setBounds(280, 60, 120, 28); add(btnExport);
+
+        JButton btnRefresh = new JButton("刷新圖表");
+        btnRefresh.setBounds(410, 60, 120, 28); add(btnRefresh);
+
+        chartPanel = new JPanel(new BorderLayout());
+        chartPanel.setBounds(20, 110, 840, 500);
+        chartPanel.setBorder(BorderFactory.createTitledBorder("營收 / 成本 / 毛利 (每日)"));
+        add(chartPanel);
+
+        btnProcure.addActionListener(e -> new ProcurementUi(admin, this::refreshBalance).setVisible(true));
+        btnPayroll.addActionListener(e -> new PayrollSettlementUi(admin, this::refreshBalance).setVisible(true));
+        btnExport.addActionListener(e -> JOptionPane.showMessageDialog(this, "尚未加入 Apache POI，暫無法匯出"));
+        btnRefresh.addActionListener(e -> drawChart());
+        drawChart();
+    }
+
+    public void refreshBalance() {
+        int bal = adminSvc.getBalance(admin.getId());
+        admin.setBalance(bal);
+        lblBalance.setText("資金餘額：" + bal);
+    }
+
+    private void drawChart() {
+        chartPanel.removeAll();
+        JLabel tip = new JLabel("尚未加入 JFreeChart，暫不顯示圖表");
+        tip.setHorizontalAlignment(SwingConstants.CENTER);
+        chartPanel.add(tip, BorderLayout.CENTER);
+        chartPanel.revalidate();
+        chartPanel.repaint();
+    }
+}

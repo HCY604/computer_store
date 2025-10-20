@@ -1,0 +1,42 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+import util.Tool;
+
+import javax.swing.*;
+
+public class EmployeeCodeLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JTextField txtEmpCode;
+    private final EmployeeService empSvc = new EmployeeServiceImpl();
+
+    public EmployeeCodeLogin() {
+        setTitle("員工登入（輸入員工編號）");
+        setSize(360, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("員工編號："); l1.setBounds(40, 40, 80, 25); add(l1);
+        txtEmpCode = new JTextField(); txtEmpCode.setBounds(120, 40, 180, 25); add(txtEmpCode);
+
+        JButton btnLogin = new JButton("登入"); btnLogin.setBounds(120, 90, 90, 28); add(btnLogin);
+        JButton btnBack  = new JButton("返回"); btnBack.setBounds(210, 90, 90, 28); add(btnBack);
+
+        btnLogin.addActionListener(e -> doLogin());
+        btnBack.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+    }
+
+    private void doLogin() {
+        String code = txtEmpCode.getText().trim();
+        if (code.isEmpty()) { JOptionPane.showMessageDialog(this, "請輸入員工編號"); return; }
+        Employee emp = empSvc.loginByCode(code);
+        if (emp == null) { JOptionPane.showMessageDialog(this, "查無此員工或已停用"); return; }
+        Tool.saveEmployee(emp);
+        new EmployeePanel().setVisible(true);
+        dispose();
+    }
+}

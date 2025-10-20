@@ -1,0 +1,169 @@
+package controller;
+
+import model.Goods;
+import model.Member;
+import model.Product;
+import service.FundService;
+import service.GoodsService;
+import service.ProductService;
+import service.impl.FundServiceImpl;
+import service.impl.GoodsServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.ChangeTool;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.print.PrinterException;
+import java.util.*;
+import java.awt.*;
+
+public class ConsumerShopUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private final Member loginMember;
+    private final ProductService productSvc = new ProductServiceImpl();
+    private final GoodsService goodsSvc = new GoodsServiceImpl();
+    private final FundService fundSvc = new FundServiceImpl();
+
+    private JComboBox<String> cboCategory, cboProduct;
+    private JTextField txtPrice;
+    private JSpinner spQty;
+    private JTable table;
+    private DefaultTableModel model;
+    private JLabel lblTotal, lblStock;
+
+    // ★ 關鍵：把 byCat 定義為類別欄位（Map<類別, 該類別的產品清單>）
+    private final Map<String, java.util.List<Product>> byCat = new java.util.LinkedHashMap<>();
+
+    public ConsumerShopUi(JFrame back, Member m){
+        this.back=back;
+        this.loginMember=m;
+
+        setSize(900, 650);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "購買電腦（會員：" + m.getUsername() + "）");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        loadProducts();
+
+        JLabel l1=new JLabel("類別"); l1.setBounds(20,50,50,24); add(l1);
+        JLabel l2=new JLabel("商品"); l2.setBounds(220,50,50,24); add(l2);
+        JLabel l3=new JLabel("單價"); l3.setBounds(520,50,50,24); add(l3);
+        JLabel l4=new JLabel("數量"); l4.setBounds(640,50,50,24); add(l4);
+
+        cboCategory=new JComboBox<>(byCat.keySet().toArray(new String[0]));
+        cboCategory.setBounds(70,50,130,24); add(cboCategory);
+
+        cboProduct=new JComboBox<>(); cboProduct.setBounds(270,50,230,24); add(cboProduct);
+        txtPrice=new JTextField(); txtPrice.setBounds(560,50,70,24); txtPrice.setEditable(false); add(txtPrice);
+        spQty=new JSpinner(new SpinnerNumberModel(1,1,99,1)); spQty.setBounds(690,50,60,24); add(spQty);
+
+        lblStock=new JLabel("庫存：0"); lblStock.setBounds(760,50,100,24); add(lblStock);
+
+        JButton btnAdd=new JButton("加入購物車"); btnAdd.setBounds(70,90,130,28); add(btnAdd);
+        JButton btnDel=new JButton("刪除選取列"); btnDel.setBounds(220,90,130,28); add(btnDel);
+
+        String[] cols={"類別","商品","單價","數量","小計"};
+        model=new DefaultTableModel(cols,0){ @Override public boolean isCellEditable(int r,int c){ return false; } };
+        table=new JTable(model);
+        JScrollPane sp=new JScrollPane(table); sp.setBounds(20,130,840,380); add(sp);
+
+        lblTotal=new JLabel("總金額：$0"); lblTotal.setBounds(20,520,200,28); lblTotal.setFont(lblTotal.getFont().deriveFont(16f)); add(lblTotal);
+        JButton btnPay=new JButton("結帳 / 找零 / 列印"); btnPay.setBounds(700,520,160,30); add(btnPay);
+
+        cboCategory.addActionListener(e -> refreshProducts());
+        cboProduct.addActionListener(e -> syncPriceStock());
+        btnAdd.addActionListener(e -> addItem());
+        btnDel.addActionListener(e -> delRow());
+        btnPay.addActionListener(e -> checkout());
+
+        refreshProducts();
+    }
+
+    /** 讀產品 → 依類別分組到 byCat */
+    private void loadProducts(){
+        byCat.clear(); // 先清空再裝
+        for (Product p : productSvc.findAll()){
+            byCat.computeIfAbsent(p.getCategory(), k -> new ArrayList<>()).add(p);
+        }
+    }
+
+    /** 類別切換 → 重填商品下拉 */
+    private void refreshProducts(){
+        cboProduct.removeAllItems();
+        String cat = (String) cboCategory.getSelectedItem();
+        if (cat!=null){
+            for (Product p : byCat.getOrDefault(cat, Collections.emptyList())) {
+                cboProduct.addItem(p.getName());
+            }
+        }
+        syncPriceStock();
+    }
+
+    /** 商品切換 → 顯示單價與庫存 */
+    private void syncPriceStock(){
+        String cat=(String)cboCategory.getSelectedItem();
+        String name=(String)cboProduct.getSelectedItem();
+        if (cat==null || name==null){ txtPrice.setText(""); lblStock.setText("庫存：0"); return; }
+        for (Product p : byCat.getOrDefault(cat, Collections.emptyList())){
+            if (p.getName().equals(name)){
+                txtPrice.setText(String.valueOf(p.getPrice()));
+                lblStock.setText("庫存：" + p.getStock());
+                return;
+            }
+        }
+    }
+
+    /** 加入購物車（檢查庫存） */
+    private void addItem(){
+        String cat=(String)cboCategory.getSelectedItem();
+        String name=(String)cboProduct.getSelectedItem();
+        if (cat==null || name==null || txtPrice.getText().isEmpty()){ JOptionPane.showMessageDialog(this,"請先選擇商品"); return; }
+        int price=Integer.parseInt(txtPrice.getText());
+        int qty=(int)spQty.getValue();
+
+        // 檢查庫存
+        Product sel=null;
+        for (Product p : byCat.getOrDefault(cat, Collections.emptyList())){
+            if (p.getName().equals(name)){ sel=p; break; }
+        }
+        if (sel==null) { JOptionPane.showMessageDialog(this,"找不到該商品"); return; }
+        if (qty > sel.getStock()){ JOptionPane.showMessageDialog(this,"庫存不足（剩 "+sel.getStock()+"）"); return; }
+
+        int line=price*qty;
+        model.addRow(new Object[]{cat,name,price,qty,line});
+        updateTotal();
+    }
+
+    /** 刪除選取列 */
+    private void delRow(){
+        int r=table.getSelectedRow();
+        if (r<0){ JOptionPane.showMessageDialog(this,"請選取要刪除的列"); return; }
+        model.removeRow(r);
+        updateTotal();
+    }
+
+    private void updateTotal(){
+        int sum=0;
+        for (int i=0;i<model.getRowCount();i++) sum += (int)model.getValueAt(i,4);
+        lblTotal.setText("總金額：$"+sum);
+    }
+
+
+    private void checkout() {
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "尚未加入商品");
+            return;
+        }
+
+        java.util.List<Object[]> rows = OrderConfirmWindow.dumpRows(table);
+        OrderConfirmWindow win = new OrderConfirmWindow(this, loginMember, rows);
+        win.setVisible(true);
+
+    }
+
+}

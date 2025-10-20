@@ -1,0 +1,39 @@
+package service.impl;
+
+import dao.CashLedgerDao;
+import dao.ProcurementDao;
+import dao.ProductDao;
+import dao.AdminDao;
+import dao.impl.CashLedgerDaoImpl;
+import dao.impl.ProcurementDaoImpl;
+import dao.impl.ProductDaoImpl;
+import dao.impl.AdminDaoImpl;
+import model.Product;
+import service.ProcureService;
+
+public class ProcureServiceImpl implements ProcureService {
+
+    private final ProductDao productDao = new ProductDaoImpl();
+    private final ProcurementDao procurementDao = new ProcurementDaoImpl();
+    private final CashLedgerDao cashLedgerDao = new CashLedgerDaoImpl();
+    private final AdminDao adminDao = new AdminDaoImpl();
+
+    @Override
+    public void procure(int adminId, int productId, int quantity) {
+        Product p = productDao.findById(productId);
+        if (p == null) return;
+
+        int costUnit = (int) Math.round(p.getShelfPrice() * 0.7);
+        int costTotal = costUnit * quantity;
+
+        procurementDao.insert(adminId, productId, quantity, costUnit, costTotal);
+
+        int newStock = p.getStockQty() + quantity;
+        productDao.updateStock(productId, newStock);
+
+        int curBal = adminDao.getBalance(adminId);
+        int after = curBal - costTotal;
+        adminDao.updateBalance(adminId, after);
+        cashLedgerDao.add(adminId, "PROCURE", -costTotal, after, "採購 " + p.getProductName() + " x " + quantity);
+    }
+}

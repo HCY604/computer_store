@@ -1,0 +1,77 @@
+package controller;
+
+import model.Product;
+import service.FundService;
+import service.ProductService;
+import service.impl.FundServiceImpl;
+import service.impl.ProductServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final Runnable onAfter;
+    private JTable table;
+
+    public ProcurementUi(Runnable onAfter) {
+        this.onAfter = onAfter;
+        setSize(720, 520);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "採購進貨");
+        UiKit.createBackButton(this, e -> { if (onAfter!=null) onAfter.run(); dispose(); });
+
+        String[] cols={"ID","類別","商品","售價","庫存","進貨數量"};
+        DefaultTableModel m = new DefaultTableModel(cols,0){ public boolean isCellEditable(int r,int c){ return c==5; } };
+        table = new JTable(m);
+        JScrollPane sp = new JScrollPane(table); sp.setBounds(20,50,660,360); add(sp);
+
+        JButton btnRun = new JButton("執行採購"); btnRun.setBounds(520,420,160,28); add(btnRun);
+        btnRun.addActionListener(e -> doProcure(m));
+
+        loadProducts(m);
+    }
+
+    private void loadProducts(DefaultTableModel m){
+        m.setRowCount(0);
+        List<Product> list = new ProductServiceImpl().findAll();
+        for (Product p : list) {
+            m.addRow(new Object[]{p.getId(), p.getCategory(), p.getName(), p.getPrice(), p.getStock(), 0});
+        }
+    }
+
+    private void doProcure(DefaultTableModel m) {
+        ProductService ps = new ProductServiceImpl();
+        FundService fs = new FundServiceImpl();
+        int rows = m.getRowCount();
+        int totalCost = 0;
+        for (int i=0;i<rows;i++){
+            int qty = 0;
+            try { qty = Integer.parseInt(String.valueOf(m.getValueAt(i,5))); } catch (Exception ignore){}
+            if (qty<=0) continue;
+            int id    = Integer.parseInt(String.valueOf(m.getValueAt(i,0)));
+            int price = Integer.parseInt(String.valueOf(m.getValueAt(i,3)));
+            int unitCost = (int)Math.round(price * 0.7); // 成本=70%
+            int cost = unitCost * qty;
+            totalCost += cost;
+
+            // 增加庫存
+            ps.changeStock(id, qty);
+            // 寫一筆 fund 交易
+            fs.addTxn("PROCURE", -cost, "採購入庫", id);
+        }
+        if (totalCost>0){
+            fs.addExpense(totalCost); // 真正扣公司的錢
+            JOptionPane.showMessageDialog(this,"採購完成，花費$"+totalCost);
+            if (onAfter!=null) onAfter.run();
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this,"未輸入任何進貨數量");
+        }
+    }
+}

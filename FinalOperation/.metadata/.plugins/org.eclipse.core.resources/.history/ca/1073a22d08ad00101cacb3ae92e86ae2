@@ -1,0 +1,7 @@
+package service;
+
+public interface AttendanceService {
+    int clockIn(int empId);
+    void clockOut(int logId);
+    int settleAndReturnAmount();  // 回傳本次結清總額
+}

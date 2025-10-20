@@ -1,0 +1,11 @@
+package service.impl;
+
+import dao.GoodsDao;
+import dao.impl.GoodsDaoImpl;
+import model.Goods;
+import service.GoodsService;
+
+public class GoodsServiceImpl implements GoodsService {
+    private final GoodsDao dao = new GoodsDaoImpl();
+    @Override public void save(Goods g){ dao.insert(g); }
+}

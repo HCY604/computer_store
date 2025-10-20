@@ -1,0 +1,32 @@
+package service.impl;
+
+import dao.AttendanceDao;
+import dao.impl.AttendanceDaoImpl;
+import service.AttendanceService;
+
+public class AttendanceServiceImpl implements AttendanceService {
+    private final AttendanceDao dao = new AttendanceDaoImpl();
+
+    @Override
+    public int clockIn(String empCode, boolean admin) {
+        int rate = admin ? 10 : 1;
+        return dao.clockIn(empCode, rate);
+    }
+
+    @Override
+    public void clockOut(String empCode) {
+        int openId = dao.getOpenLogId(empCode);
+        if (openId == 0) throw new RuntimeException("尚未上班或已下班");
+        dao.clockOut(openId);
+    }
+
+    @Override
+    public int unpaidAmount(String empCode) {
+        return dao.sumUnpaidSeconds(empCode);
+    }
+
+    @Override
+    public void markPaid(String empCode) {
+        dao.markPaid(empCode);
+    }
+}

@@ -1,0 +1,11 @@
+package util;
+
+import org.jfree.chart.JFreeChart;
+import java.awt.RenderingHints;
+
+public class ChartKit {
+    public static void applyTheme(JFreeChart chart){
+        chart.setAntiAlias(true);
+        chart.getRenderingHints().put(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    }
+}

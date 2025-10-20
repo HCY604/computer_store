@@ -1,0 +1,62 @@
+package util;
+
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.title.LegendTitle;
+import org.jfree.chart.plot.Plot;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.NumberAxis;
+
+import java.awt.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+public class ChartKit {
+
+    /** 找一個系統有的 CJK 字型，避免中文顯示為方框 */
+    public static String pickCjkFont() {
+        String[] candidates = {
+            "Microsoft JhengHei", "微軟正黑體", "PingFang TC", "Noto Sans CJK TC",
+            "PMingLiU", "MingLiU", "SimHei", "SimSun", "Heiti TC", "Source Han Sans TC",
+            "KaiTi", "WenQuanYi Zen Hei", "Arial Unicode MS", "Dialog", "SansSerif"
+        };
+        Set<String> installed = new HashSet<>(
+            Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames())
+        );
+        for (String c : candidates) if (installed.contains(c)) return c;
+        return "Dialog";
+    }
+
+    public static void applyTheme(JFreeChart chart) {
+        String fontName = pickCjkFont();
+        Font titleFont   = new Font(fontName, Font.BOLD, 18);
+        Font axisFont    = new Font(fontName, Font.PLAIN, 12);
+        Font legendFont  = new Font(fontName, Font.PLAIN, 12);
+        Font labelFont   = new Font(fontName, Font.PLAIN, 12);
+
+        if (chart.getTitle() != null) chart.getTitle().setFont(titleFont);
+        LegendTitle legend = chart.getLegend();
+        if (legend != null) legend.setItemFont(legendFont);
+
+        Plot p = chart.getPlot();
+        if (p instanceof CategoryPlot) {
+            CategoryPlot cp = (CategoryPlot) p;
+            if (cp.getDomainAxis() != null) {
+                CategoryAxis x = cp.getDomainAxis();
+                x.setTickLabelFont(axisFont);
+                x.setLabelFont(axisFont);
+            }
+            if (cp.getRangeAxis() != null) {
+                NumberAxis y = (NumberAxis) cp.getRangeAxis();
+                y.setTickLabelFont(axisFont);
+                y.setLabelFont(axisFont);
+            }
+        } else if (p instanceof PiePlot) {
+            PiePlot pp = (PiePlot) p;
+            pp.setLabelFont(labelFont);
+            pp.setSimpleLabels(true);
+        }
+    }
+}

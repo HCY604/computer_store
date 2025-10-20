@@ -1,0 +1,16 @@
+package service.impl;
+
+import dao.ProductDao;
+import dao.impl.ProductDaoImpl;
+import model.Product;
+import service.ProductService;
+
+import java.util.List;
+
+public class ProductServiceImpl implements ProductService {
+    private final ProductDao dao = new ProductDaoImpl();
+    @Override public List<Product> findAll() { return dao.findAll(); }
+    @Override public Product findById(int id) { return dao.findById(id); }
+    @Override public void changeStock(int productId, int delta) { dao.changeStock(productId, delta); }
+    @Override public void updateSafeStock(int productId, int safe) { dao.updateSafeStock(productId, safe); }
+}

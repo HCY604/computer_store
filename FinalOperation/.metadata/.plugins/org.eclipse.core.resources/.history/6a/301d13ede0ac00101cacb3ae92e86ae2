@@ -1,0 +1,24 @@
+package controller;
+
+import javax.swing.*;
+
+public class EmployeeLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public EmployeeLogin() {
+        setTitle("員工入口");
+        setSize(360, 220);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel tip = new JLabel("員工可進入管理員登入");
+        tip.setBounds(100, 20, 200, 25); add(tip);
+
+        JButton btnAdmin = new JButton("管理員登入"); btnAdmin.setBounds(100, 60, 160, 30); add(btnAdmin);
+        JButton btnBack = new JButton("返回主選單"); btnBack.setBounds(100, 110, 160, 30); add(btnBack);
+
+        btnAdmin.addActionListener(e -> { new AdminLogin().setVisible(true); dispose(); });
+        btnBack.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+    }
+}

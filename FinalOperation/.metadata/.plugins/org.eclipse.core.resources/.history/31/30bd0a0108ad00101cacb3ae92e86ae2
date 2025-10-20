@@ -1,0 +1,9 @@
+package service;
+
+import model.Employee;
+
+public interface EmployeeService {
+    Employee loginByCode(String empCode);  // 輸入員工編號登入
+    void hire(Employee e);                 // 新增員工
+    void fire(int empId);                  // 開除（active=0）
+}

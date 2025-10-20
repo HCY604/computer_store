@@ -1,0 +1,57 @@
+package dao.impl;
+
+import dao.ReportDao;
+import util.DbConnection;
+import vo.DailyFinanceVo;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ReportDaoImpl implements ReportDao {
+
+    @Override
+    public List<DailyFinanceVo> listDailyFinance(int lastNDays) {
+        // 以 UNION ALL 合併三張表（銷售/採購/薪資），再 group by 日期做彙總
+        String sql =
+            "SELECT t.biz_date,\n" +
+            "       SUM(t.sales_amount)   AS sales_amount,\n" +
+            "       SUM(t.procure_cost)   AS procure_cost,\n" +
+            "       SUM(t.payroll_cost)   AS payroll_cost\n" +
+            "FROM (\n" +
+            "  SELECT DATE(g.order_time) AS biz_date, SUM(g.line_total) AS sales_amount, 0 AS procure_cost, 0 AS payroll_cost\n" +
+            "  FROM goods g GROUP BY DATE(g.order_time)\n" +
+            "  UNION ALL\n" +
+            "  SELECT DATE(p.created_at) AS biz_date, 0, SUM(p.cost_total), 0\n" +
+            "  FROM procurement p GROUP BY DATE(p.created_at)\n" +
+            "  UNION ALL\n" +
+            "  SELECT DATE(pr.settled_at) AS biz_date, 0, 0, SUM(pr.total_amount)\n" +
+            "  FROM payroll_record pr GROUP BY DATE(pr.settled_at)\n" +
+            ") t\n" +
+            "WHERE t.biz_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)\n" +
+            "GROUP BY t.biz_date\n" +
+            "ORDER BY t.biz_date";
+
+        List<DailyFinanceVo> list = new ArrayList<>();
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, lastNDays);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    DailyFinanceVo v = new DailyFinanceVo();
+                    v.setBizDate(rs.getString("biz_date"));
+                    int sales   = rs.getInt("sales_amount");
+                    int procure = rs.getInt("procure_cost");
+                    int payroll = rs.getInt("payroll_cost");
+                    v.setSalesAmount(sales);
+                    v.setProcureCost(procure);
+                    v.setPayrollCost(payroll);
+                    v.setNetProfit(sales - procure - payroll);
+                    list.add(v);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+}

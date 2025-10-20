@@ -1,0 +1,133 @@
+package controller;
+
+import model.Member;
+import model.Product;
+import service.ProductService;
+import service.impl.ProductServiceImpl;
+import util.UiKit;
+import util.Tool;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class OrderUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private final Order order = new Order();
+    private JTable table;
+    private JLabel lblTotal, lblUser;
+
+    private JComboBox<String> cboCategory, cboProduct;
+    private JTextField txtPrice;
+    private JSpinner spQty;
+
+    private List<Product> all;
+
+    public OrderUi(JFrame back) {
+        this.back = back;
+        setSize(820, 640);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "購買電腦");
+        UiKit.createBackButton(this, e -> { if (back!=null) back.setVisible(true); dispose(); });
+
+        Member m = Tool.loadMember();
+        lblUser = new JLabel("會員：" + (m==null? "未登入" : m.getName()+" ("+m.getUsername()+")"));
+        lblUser.setBounds(120,10,400,24); add(lblUser);
+
+        ProductService ps = new ProductServiceImpl();
+        all = ps.findAll();
+
+        JLabel l1=new JLabel("類別："); l1.setBounds(20,50,60,24); add(l1);
+        cboCategory = new JComboBox<>(all.stream().map(Product::getCategory).distinct().toArray(String[]::new));
+        cboCategory.setBounds(80,50,140,24); add(cboCategory);
+
+        JLabel l2=new JLabel("商品："); l2.setBounds(240,50,60,24); add(l2);
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(300,50,220,24); add(cboProduct);
+
+        JLabel l3=new JLabel("價格："); l3.setBounds(540,50,60,24); add(l3);
+        txtPrice = new JTextField(); txtPrice.setBounds(590,50,80,24); txtPrice.setEditable(false); add(txtPrice);
+
+        JLabel l4=new JLabel("數量："); l4.setBounds(680,50,60,24); add(l4);
+        spQty = new JSpinner(new SpinnerNumberModel(1,1,99,1)); spQty.setBounds(720,50,60,24); add(spQty);
+
+        JButton btnAdd = new JButton("加入購物車"); btnAdd.setBounds(20,90,120,28); add(btnAdd);
+        JButton btnDel = new JButton("刪除選取"); btnDel.setBounds(150,90,120,28); add(btnDel);
+
+        String[] cols={"類別","商品","單價","數量","小計","庫存"};
+        DefaultTableModel mdt = new DefaultTableModel(cols,0){ public boolean isCellEditable(int r,int c){ return false; }};
+        table = new JTable(mdt);
+        JScrollPane sp = new JScrollPane(table); sp.setBounds(20,130,760,420); add(sp);
+
+        lblTotal = new JLabel("應付總額：$0"); lblTotal.setBounds(20,560,300,24); lblTotal.setFont(lblTotal.getFont().deriveFont(Font.BOLD,16f)); add(lblTotal);
+        JButton btnCheckout = new JButton("前往結帳"); btnCheckout.setBounds(640,560,140,28); add(btnCheckout);
+
+        cboCategory.addActionListener(e -> reloadProducts());
+        cboProduct.addActionListener(e -> syncPrice());
+        btnAdd.addActionListener(e -> addLine(mdt));
+        btnDel.addActionListener(e -> removeLine(mdt));
+        btnCheckout.addActionListener(e -> {
+            if (order.size()==0){ JOptionPane.showMessageDialog(this,"尚未加入任何商品"); return; }
+            new CheckoutReview(order, ()->{
+                // 結帳完成後清空畫面
+                order.clear();
+                mdt.setRowCount(0);
+                refreshTotal();
+                // 重新讀取庫存顯示
+                all = new ProductServiceImpl().findAll();
+                reloadProducts();
+            }).setVisible(true);
+        });
+
+        reloadProducts();
+    }
+
+    private void reloadProducts() {
+        String cat = (String) cboCategory.getSelectedItem();
+        cboProduct.removeAllItems();
+        if (cat != null) {
+            List<Product> list = all.stream().filter(p -> p.getCategory().equals(cat)).collect(Collectors.toList());
+            for (Product p : list) cboProduct.addItem(p.getName() + " (剩 " + p.getStock() + ")");
+            if (!list.isEmpty()) txtPrice.setText(String.valueOf(list.get(0).getPrice()));
+        }
+        syncPrice();
+    }
+
+    private void syncPrice() {
+        String cat = (String) cboCategory.getSelectedItem();
+        String show = (String) cboProduct.getSelectedItem();
+        if (cat==null || show==null) { txtPrice.setText(""); return; }
+        Product p = all.stream().filter(x -> x.getCategory().equals(cat) && show.startsWith(x.getName()+" ")).findFirst().orElse(null);
+        if (p!=null) txtPrice.setText(String.valueOf(p.getPrice()));
+    }
+
+    private void addLine(DefaultTableModel mdt) {
+        String cat = (String) cboCategory.getSelectedItem();
+        String show = (String) cboProduct.getSelectedItem();
+        if (cat==null || show==null) return;
+        Product p = all.stream().filter(x -> x.getCategory().equals(cat) && show.startsWith(x.getName()+" ")).findFirst().orElse(null);
+        if (p==null){ JOptionPane.showMessageDialog(this,"找不到產品"); return; }
+        int qty = (int) spQty.getValue();
+        if (qty<=0){ JOptionPane.showMessageDialog(this,"數量需>0"); return; }
+        if (p.getStock()<qty){ JOptionPane.showMessageDialog(this,"庫存不足（剩 "+p.getStock()+"）"); return; }
+        int line = p.getPrice()*qty;
+        order.addItem(new Order.Item(p.getId(), p.getCategory(), p.getName(), p.getPrice(), qty));
+        mdt.addRow(new Object[]{p.getCategory(), p.getName(), p.getPrice(), qty, line, p.getStock()});
+        refreshTotal();
+    }
+
+    private void removeLine(DefaultTableModel mdt) {
+        int row = table.getSelectedRow();
+        if (row<0){ JOptionPane.showMessageDialog(this,"請先選取一列"); return; }
+        order.removeItemAt(row);
+        mdt.removeRow(row);
+        refreshTotal();
+    }
+
+    private void refreshTotal(){ lblTotal.setText("應付總額：$"+order.getTotalAmount()); }
+}

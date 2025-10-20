@@ -1,0 +1,28 @@
+package controller;
+
+import javax.swing.*;
+
+public class RoleSelector extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    public RoleSelector() {
+        setTitle("角色選擇");
+        setSize(360, 240);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JButton btnCustomer = new JButton("客戶登入/購物");
+        btnCustomer.setBounds(90, 30, 180, 32); add(btnCustomer);
+
+        JButton btnEmployee = new JButton("員工登入/打卡");
+        btnEmployee.setBounds(90, 80, 180, 32); add(btnEmployee);
+
+        JButton btnAdmin = new JButton("管理員登入");
+        btnAdmin.setBounds(90, 130, 180, 32); add(btnAdmin);
+
+        btnCustomer.addActionListener(e -> { new Login().setVisible(true); dispose(); });
+        btnEmployee.addActionListener(e -> { new EmployeeLogin().setVisible(true); dispose(); });
+        btnAdmin.addActionListener(e -> { new AdminLogin().setVisible(true); dispose(); });
+    }
+}

@@ -1,0 +1,141 @@
+package dao.impl;
+
+import dao.FundDao;
+import dao.ProcurementDao;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class ProcurementDaoImpl implements ProcurementDao {
+
+    private final FundDao fundDao = new FundDaoImpl();
+
+    @Override
+    public boolean procure(int adminEmpId, int productId, int quantity) {
+        String qPrice = "SELECT shelf_price FROM product WHERE id=? FOR UPDATE";
+        String uStock = "UPDATE product SET stock_qty = stock_qty + ? WHERE id=?";
+        String insProc = "INSERT INTO procurement(admin_emp_id,product_id,quantity,cost_unit,cost_total) VALUES(?,?,?,?,?)";
+        String insTxn  = "INSERT INTO inventory_txn(product_id,txn_type,quantity,note,related_id) VALUES(?,'PROCURE',?,'admin procure',?)";
+
+        try (Connection conn = DbConnection.getDb()) {
+            conn.setAutoCommit(false);
+
+            int shelfPrice;
+            try (PreparedStatement ps = conn.prepareStatement(qPrice)) {
+                ps.setInt(1, productId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) { conn.rollback(); return false; }
+                    shelfPrice = rs.getInt(1);
+                }
+            }
+
+            int costUnit = (int)Math.round(shelfPrice * 0.7);
+            int costTotal = costUnit * quantity;
+
+            int bal;
+            try (PreparedStatement ps = conn.prepareStatement("SELECT balance FROM company_fund WHERE id=1 FOR UPDATE");
+                 ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) { conn.rollback(); return false; }
+                bal = rs.getInt(1);
+            }
+            if (bal < costTotal) { conn.rollback(); return false; }
+
+            conn.commit();
+            boolean ok = fundDao.addTxn("PROCURE", -costTotal, "採購 productId="+productId, null);
+            if (!ok) return false;
+
+            long procId = 0L;
+            try (Connection c2 = DbConnection.getDb()) {
+                c2.setAutoCommit(false);
+                try (PreparedStatement ps = c2.prepareStatement(uStock)) {
+                    ps.setInt(1, quantity);
+                    ps.setInt(2, productId);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = c2.prepareStatement(insProc, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, adminEmpId);
+                    ps.setInt(2, productId);
+                    ps.setInt(3, quantity);
+                    ps.setInt(4, costUnit);
+                    ps.setInt(5, costTotal);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) procId = rs.getLong(1); }
+                }
+                try (PreparedStatement ps = c2.prepareStatement(insTxn)) {
+                    ps.setInt(1, productId);
+                    ps.setInt(2, quantity);
+                    ps.setLong(3, procId);
+                    ps.executeUpdate();
+                }
+                c2.commit();
+            }
+            return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    @Override
+    public boolean insert(int adminEmpId, int productId, int quantity, int costUnit, int costTotal) {
+        if (costUnit < 0 || quantity <= 0) return false;
+        int realTotal = costUnit * quantity;
+
+        String lockFund   = "SELECT balance FROM company_fund WHERE id=1 FOR UPDATE";
+        String insFundTxn = "INSERT INTO company_fund_txn(txn_type,amount,note,related_id) VALUES('PROCURE', ?, ?, ?)";
+        String updFund    = "UPDATE company_fund SET balance = balance - ? WHERE id=1";
+
+        String uStock = "UPDATE product SET stock_qty = stock_qty + ? WHERE id=?";
+        String insProc = "INSERT INTO procurement(admin_emp_id,product_id,quantity,cost_unit,cost_total) VALUES(?,?,?,?,?)";
+        String insTxn  = "INSERT INTO inventory_txn(product_id,txn_type,quantity,note,related_id) VALUES(?,'PROCURE',?,'admin procure(manual cost)',?)";
+
+        try (Connection conn = DbConnection.getDb()) {
+            conn.setAutoCommit(false);
+
+            int bal;
+            try (PreparedStatement ps = conn.prepareStatement(lockFund);
+                 ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) { conn.rollback(); return false; }
+                bal = rs.getInt(1);
+            }
+            if (bal < realTotal) { conn.rollback(); return false; }
+
+            try (PreparedStatement ps = conn.prepareStatement(insFundTxn)) {
+                ps.setInt(1, -realTotal);
+                ps.setString(2, "採購 productId=" + productId + " (manual cost)");
+                ps.setNull(3, Types.BIGINT);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(updFund)) {
+                ps.setInt(1, realTotal);
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(uStock)) {
+                ps.setInt(1, quantity);
+                ps.setInt(2, productId);
+                ps.executeUpdate();
+            }
+
+            long procId = 0L;
+            try (PreparedStatement ps = conn.prepareStatement(insProc, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, adminEmpId);
+                ps.setInt(2, productId);
+                ps.setInt(3, quantity);
+                ps.setInt(4, costUnit);
+                ps.setInt(5, realTotal);
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) procId = rs.getLong(1); }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(insTxn)) {
+                ps.setInt(1, productId);
+                ps.setInt(2, quantity);
+                ps.setLong(3, procId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+}

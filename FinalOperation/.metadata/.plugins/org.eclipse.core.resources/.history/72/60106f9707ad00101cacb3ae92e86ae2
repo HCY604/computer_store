@@ -1,0 +1,8 @@
+package dao;
+
+public interface FundDao {
+    int getBalance();
+    void addTxn(String type, int amount, String memo, Integer refId); // 正=收入；負=支出
+    void addExpense(int amount);  // = addTxn("ADJUST",-amount,...)+扣餘額
+    void addIncome(int amount);   // = addTxn("ADJUST",+amount,...)+加餘額
+}

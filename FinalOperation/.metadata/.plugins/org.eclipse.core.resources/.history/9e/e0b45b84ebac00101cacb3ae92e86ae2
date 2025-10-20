@@ -1,0 +1,12 @@
+package util;
+
+import java.util.regex.Pattern;
+
+public class RegexUtil {
+    private static final Pattern PHONE_T = Pattern.compile("^09\\d{8}$"); 
+
+    public static boolean isValidPhone(String s) {
+        if (s == null) return false;
+        return PHONE_TW.matcher(s.trim()).matches();
+    }
+}

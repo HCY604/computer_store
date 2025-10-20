@@ -1,0 +1,70 @@
+package dao.impl;
+
+import dao.FundDao;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class FundDaoImpl implements FundDao {
+
+    private static final String SELECT_SQL = "SELECT balance FROM fund_balance WHERE id=1";
+    private static final String INIT_SQL   = "INSERT INTO fund_balance (id, balance) VALUES (1, ?) " +
+                                             "ON DUPLICATE KEY UPDATE balance=balance";
+    private static final String ADD_SQL    = "UPDATE fund_balance SET balance = balance + ? WHERE id=1";
+    private static final String SUB_SQL    = "UPDATE fund_balance SET balance = balance - ? WHERE id=1";
+
+    /** 確保資料列存在（第一次跑系統時自動建立） */
+    private void ensureRow() {
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(SELECT_SQL);
+             ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+                try (PreparedStatement init = c.prepareStatement(INIT_SQL)) {
+                    init.setInt(1, 1_000_000); // 初始資金
+                    init.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int getBalance() {
+        ensureRow();
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(SELECT_SQL);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
+    public void addIncome(int amount) {
+        ensureRow();
+        if (amount <= 0) return;
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(ADD_SQL)) {
+            ps.setInt(1, amount);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void addExpense(int amount) {
+        ensureRow();
+        if (amount <= 0) return;
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(SUB_SQL)) {
+            ps.setInt(1, amount);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}

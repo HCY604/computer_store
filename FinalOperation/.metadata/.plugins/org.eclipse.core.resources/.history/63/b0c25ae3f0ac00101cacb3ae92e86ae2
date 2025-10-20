@@ -1,0 +1,32 @@
+package dao.impl;
+
+import dao.ReportDao;
+import util.DbConnection;
+import vo.DailyProfitVo;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ReportDaoImpl implements ReportDao {
+    @Override
+    public List<DailyProfitVo> listDailyProfit(int lastNDays) {
+        String sql = "SELECT biz_date, sales_amount, procure_cost, gross_profit " +
+                     "FROM v_daily_profit WHERE biz_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ORDER BY biz_date";
+        List<DailyProfitVo> list = new ArrayList<>();
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, lastNDays);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    DailyProfitVo v = new DailyProfitVo();
+                    v.setBizDate(rs.getString("biz_date"));
+                    v.setSalesAmount(rs.getInt("sales_amount"));
+                    v.setProcureCost(rs.getInt("procure_cost"));
+                    v.setGrossProfit(rs.getInt("gross_profit"));
+                    list.add(v);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+}

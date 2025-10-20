@@ -1,0 +1,15 @@
+package service.impl;
+
+import dao.AttendanceDao;
+import dao.impl.AttendanceDaoImpl;
+import service.AttendanceService;
+
+public class AttendanceServiceImpl implements AttendanceService {
+    private final AttendanceDao dao = new AttendanceDaoImpl();
+    @Override
+    public int clockIn(int empId) { return dao.clockIn(empId); }
+    @Override
+    public void clockOut(int logId) { dao.clockOut(logId); }
+    @Override
+    public int settleAndReturnAmount() { return dao.settleUnpaidAndReturnAmount(); }
+}

@@ -1,0 +1,8 @@
+package dao;
+public interface AttendanceDao {
+    int clockIn(String empCode, int ratePerSec);             // 回傳 log id
+    void clockOut(int logId);                                // 自動算秒數
+    int getOpenLogId(String empCode);                        // 尚未下班的打卡
+    int sumUnpaidSeconds(String empCode);                    // 未發薪總秒數
+    void markPaid(String empCode);                           // 將未發薪紀錄設為已發
+}

@@ -1,0 +1,40 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class EmployeeLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final EmployeeService svc = new EmployeeServiceImpl();
+
+    private JTextField tfCode;
+
+    public EmployeeLogin(JFrame back) {
+        this.back = back;
+        setSize(360, 220);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "員工登入");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JLabel l=new JLabel("員工代碼："); l.setBounds(40,60,80,24); add(l);
+        tfCode=new JTextField(); tfCode.setBounds(120,60,180,24); add(tfCode);
+
+        JButton btn=new JButton("登入"); btn.setBounds(120,100,90,28); add(btn);
+        btn.addActionListener(e -> doLogin());
+    }
+
+    private void doLogin(){
+        String code=tfCode.getText().trim();
+        if (code.isEmpty()){ JOptionPane.showMessageDialog(this,"請輸入員工代碼"); return; }
+        Employee emp = svc.findByCode(code);
+        if (emp==null || !emp.isActive()){ JOptionPane.showMessageDialog(this,"無此員工或已離職"); return; }
+        new EmployeeHome(this, emp).setVisible(true);
+    }
+}

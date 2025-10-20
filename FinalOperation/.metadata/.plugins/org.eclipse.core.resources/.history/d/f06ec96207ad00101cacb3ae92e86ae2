@@ -1,0 +1,9 @@
+package dao;
+
+import model.Employee;
+
+public interface EmployeeDao {
+    Employee findByEmpCode(String empCode);
+    void insert(Employee e);
+    void deactivate(int empId);
+}

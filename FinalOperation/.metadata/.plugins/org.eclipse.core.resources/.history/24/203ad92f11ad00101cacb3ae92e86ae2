@@ -1,0 +1,169 @@
+package controller;
+
+import service.ReportService;
+import service.impl.ReportServiceImpl;
+import util.UiKit;
+import vo.DailyFinanceVo;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
+
+import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.print.PageFormat;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
+import java.io.FileOutputStream;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class AdminReportDashboard extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private final ReportService svc = new ReportServiceImpl();
+
+    private JComboBox<String> cboRange, cboChart;
+    private JPanel chartHolder; private ChartPanel chartPanel;
+    private JLabel lblSumSales, lblSumProc, lblSumPay, lblSumNet;
+
+    public AdminReportDashboard(JFrame back){
+        this.back=back;
+        setSize(1100, 860); setLocationRelativeTo(null); setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); setLayout(null);
+        UiKit.attachClockToTitle(this,"營利報表 / 銷售占比"); UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JLabel l1=new JLabel("區間："); l1.setBounds(110,10,50,24); add(l1);
+        cboRange=new JComboBox<>(new String[]{"近7天","近30天","近90天"}); cboRange.setBounds(160,10,100,26); add(cboRange);
+
+        JLabel l2=new JLabel("圖表："); l2.setBounds(270,10,50,24); add(l2);
+        cboChart=new JComboBox<>(new String[]{"營利彙總（長條）","營利日別（折線）","熱銷占比（圓餅）"}); cboChart.setBounds(320,10,180,26); add(cboChart);
+
+        JButton btnRefresh=new JButton("重新整理"); btnRefresh.setBounds(510,10,110,26); add(btnRefresh);
+        JButton btnPrint  =new JButton("列印圖表"); btnPrint  .setBounds(630,10,110,26); add(btnPrint);
+        JButton btnExcel  =new JButton("匯出Excel"); btnExcel  .setBounds(750,10,110,26); add(btnExcel);
+
+        lblSumSales=new JLabel("總營收：$0"); lblSumSales.setBounds(20,44,240,24); add(lblSumSales);
+        lblSumProc =new JLabel("採購成本：$0"); lblSumProc.setBounds(260,44,240,24); add(lblSumProc);
+        lblSumPay  =new JLabel("人事成本：$0"); lblSumPay .setBounds(500,44,240,24); add(lblSumPay);
+        lblSumNet  =new JLabel("淨利潤：$0");   lblSumNet .setBounds(740,44,240,24); add(lblSumNet);
+
+        chartHolder=new JPanel(new BorderLayout()); chartHolder.setBounds(20,80,1040,740); add(chartHolder);
+
+        btnRefresh.addActionListener(e -> redraw());
+        btnPrint  .addActionListener(e -> printChart());
+        btnExcel  .addActionListener(e -> exportExcel());
+        cboRange  .addActionListener(e -> redraw());
+        cboChart  .addActionListener(e -> redraw());
+
+        redraw();
+    }
+
+    private int days(){
+        String s=(String)cboRange.getSelectedItem();
+        if (s==null) return 30;
+        if (s.contains("7")) return 7;
+        if (s.contains("90")) return 90;
+        return 30;
+    }
+
+    private void redraw(){
+        List<DailyFinanceVo> data = svc.listDailyFinance(days());
+
+        int sumSales=0,sumProc=0,sumPay=0;
+        for (DailyFinanceVo v : data){ sumSales+=v.getSalesAmount(); sumProc+=v.getProcureCost(); sumPay+=v.getPayrollCost(); }
+        int net = sumSales - sumProc - sumPay;
+
+        lblSumSales.setText("總營收：$"+sumSales);
+        lblSumProc .setText("採購成本：$"+sumProc);
+        lblSumPay  .setText("人事成本：$"+sumPay);
+        lblSumNet  .setText("淨利潤：$"+net);
+
+        String chartType=(String)cboChart.getSelectedItem();
+        JFreeChart chart;
+
+        if (chartType==null || chartType.startsWith("營利彙總")) {
+            DefaultCategoryDataset ds=new DefaultCategoryDataset();
+            ds.addValue(sumSales,"金額","總營收");
+            ds.addValue(sumProc ,"金額","採購成本");
+            ds.addValue(sumPay  ,"金額","人事成本");
+            ds.addValue(net     ,"金額","淨利潤");
+            chart= ChartFactory.createBarChart("期間彙總對比","項目","金額",ds);
+        } else if (chartType.startsWith("營利日別")) {
+            DefaultCategoryDataset ds=new DefaultCategoryDataset();
+            for (DailyFinanceVo v : data){
+                int n = v.getSalesAmount()-v.getProcureCost()-v.getPayrollCost();
+                ds.addValue(v.getSalesAmount(),"營收",v.getBizDate());
+                ds.addValue(v.getProcureCost(),"採購",v.getBizDate());
+                ds.addValue(v.getPayrollCost(),"人事",v.getBizDate());
+                ds.addValue(n,"淨利",v.getBizDate());
+            }
+            chart= ChartFactory.createLineChart("每日營收/採購/人事/淨利（日別）","日期","金額",ds);
+        } else {
+            Map<String,Integer> pie = svc.topProductPie(days());
+            DefaultPieDataset<String> pds=new DefaultPieDataset<>();
+            if (pie.isEmpty()) pds.setValue("無資料",1);
+            else pie.forEach(pds::setValue);
+            chart= ChartFactory.createPieChart("熱銷占比（近"+days()+"天）", pds, true,true,false);
+        }
+
+        chartPanel=new ChartPanel(chart);
+        chartHolder.removeAll(); chartHolder.add(chartPanel, BorderLayout.CENTER); chartHolder.revalidate(); chartHolder.repaint();
+    }
+
+    private void printChart(){
+        if (chartPanel==null) return;
+        try {
+            PrinterJob job=PrinterJob.getPrinterJob();
+            job.setJobName("FinanceChart");
+            job.setPrintable(new java.awt.print.Printable() {
+                @Override
+                public int print(Graphics g, PageFormat pf, int pageIndex) throws PrinterException {
+                    if (pageIndex>0) return java.awt.print.Printable.NO_SUCH_PAGE;
+                    Graphics2D g2=(Graphics2D)g; g2.translate(pf.getImageableX(), pf.getImageableY());
+                    chartPanel.printAll(g2);
+                    return java.awt.print.Printable.PAGE_EXISTS;
+                }
+            });
+            if (job.printDialog()) job.print();
+        } catch (Exception e){ JOptionPane.showMessageDialog(this,"列印失敗："+e.getMessage()); }
+    }
+
+    private void exportExcel(){
+        List<DailyFinanceVo> data = svc.listDailyFinance(365);
+        JFileChooser fc=new JFileChooser(); fc.setSelectedFile(new java.io.File("FinanceReport.xlsx"));
+        if (fc.showSaveDialog(this)!=JFileChooser.APPROVE_OPTION) return;
+
+        try (Workbook wb=new XSSFWorkbook()){
+            Sheet sh=wb.createSheet("Daily"); int r=0;
+            Row head=sh.createRow(r++); head.createCell(0).setCellValue("日期"); head.createCell(1).setCellValue("營收"); head.createCell(2).setCellValue("採購成本"); head.createCell(3).setCellValue("人事成本"); head.createCell(4).setCellValue("淨利潤");
+            int sumS=0,sumP=0,sumH=0,sumN=0;
+            for (DailyFinanceVo v : data){
+                int n=v.getSalesAmount()-v.getProcureCost()-v.getPayrollCost();
+                Row row=sh.createRow(r++);
+                row.createCell(0).setCellValue(v.getBizDate());
+                row.createCell(1).setCellValue(v.getSalesAmount());
+                row.createCell(2).setCellValue(v.getProcureCost());
+                row.createCell(3).setCellValue(v.getPayrollCost());
+                row.createCell(4).setCellValue(n);
+                sumS+=v.getSalesAmount(); sumP+=v.getProcureCost(); sumH+=v.getPayrollCost(); sumN+=n;
+            }
+            for (int i=0;i<=4;i++) sh.autoSizeColumn(i);
+
+            Sheet sum=wb.createSheet("Summary");
+            Row h2=sum.createRow(0); h2.createCell(0).setCellValue("總營收"); h2.createCell(1).setCellValue("採購成本"); h2.createCell(2).setCellValue("人事成本"); h2.createCell(3).setCellValue("淨利潤");
+            Row d2=sum.createRow(1); d2.createCell(0).setCellValue(sumS); d2.createCell(1).setCellValue(sumP); d2.createCell(2).setCellValue(sumH); d2.createCell(3).setCellValue(sumN);
+            for (int i=0;i<=3;i++) sum.autoSizeColumn(i);
+
+            try(FileOutputStream out=new FileOutputStream(fc.getSelectedFile())){ wb.write(out); }
+            JOptionPane.showMessageDialog(this,"匯出成功："+fc.getSelectedFile().getAbsolutePath());
+        }catch(Exception ex){ JOptionPane.showMessageDialog(this,"匯出失敗："+ex.getMessage()); }
+    }
+}

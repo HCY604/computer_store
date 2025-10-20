@@ -1,0 +1,9 @@
+package dao;
+
+import vo.DailyProfitVo;
+import java.util.List;
+
+public interface ReportDao {
+    /** 取最近 N 天的營收/成本/毛利 */
+    List<DailyProfitVo> listDailyProfit(int lastNDays);
+}

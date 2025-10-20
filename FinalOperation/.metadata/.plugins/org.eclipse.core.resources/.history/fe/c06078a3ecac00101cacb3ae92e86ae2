@@ -1,0 +1,82 @@
+package dao.impl;
+
+import dao.TimeLogDao;
+import model.TimeSummary;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class TimeLogDaoImpl implements TimeLogDao {
+
+    @Override
+    public boolean startShift(int employeeId) {
+        String checkOpen = "SELECT id FROM employee_time_log WHERE employee_id=? AND clock_out IS NULL ORDER BY id DESC LIMIT 1";
+        String ins = "INSERT INTO employee_time_log(employee_id, clock_in) VALUES(?, NOW())";
+        try (Connection conn = DbConnection.getDb()) {
+            try (PreparedStatement ps = conn.prepareStatement(checkOpen)) {
+                ps.setInt(1, employeeId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return false; // 已有開啟中的班次
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                ps.setInt(1, employeeId);
+                return ps.executeUpdate() == 1;
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    @Override
+    public boolean stopShift(int employeeId) {
+        String findOpen = "SELECT id FROM employee_time_log WHERE employee_id=? AND clock_out IS NULL ORDER BY id DESC LIMIT 1";
+        String upd = "UPDATE employee_time_log " +
+                     "SET clock_out=NOW(), seconds=TIMESTAMPDIFF(SECOND, clock_in, NOW()), amount=TIMESTAMPDIFF(SECOND, clock_in, NOW()) " +
+                     "WHERE id=?";
+        try (Connection conn = DbConnection.getDb()) {
+            Integer id = null;
+            try (PreparedStatement ps = conn.prepareStatement(findOpen)) {
+                ps.setInt(1, employeeId);
+                try (ResultSet rs = ps.executeQuery()) { if (rs.next()) id = rs.getInt(1); }
+            }
+            if (id == null) return false;
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setInt(1, id);
+                return ps.executeUpdate() == 1;
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    @Override
+    public TimeSummary sumUnpaid(int employeeId) {
+        String sql = "SELECT COALESCE(SUM(seconds),0), COALESCE(SUM(amount),0) FROM employee_time_log WHERE employee_id=? AND paid=0 AND clock_out IS NOT NULL";
+        try (PreparedStatement ps = DbConnection.getDb().prepareStatement(sql)) {
+            ps.setInt(1, employeeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return new TimeSummary(rs.getInt(1), rs.getInt(2));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return new TimeSummary(0,0);
+    }
+
+    @Override
+    public boolean markPaid(int employeeId, int totalSeconds, int totalAmount) {
+        String ins = "INSERT INTO payroll_record(employee_id,total_seconds,total_amount) VALUES(?,?,?)";
+        String upd = "UPDATE employee_time_log SET paid=1 WHERE employee_id=? AND paid=0 AND clock_out IS NOT NULL";
+        try (Connection conn = DbConnection.getDb()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                ps.setInt(1, employeeId); ps.setInt(2, totalSeconds); ps.setInt(3, totalAmount);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(upd)) {
+                ps.setInt(1, employeeId);
+                ps.executeUpdate();
+            }
+            conn.commit();
+            return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+}

@@ -1,0 +1,8 @@
+package service;
+
+import model.Member;
+
+public interface MemberService {
+    void insert(Member member) throws IllegalArgumentException;
+    Member login(String username, String password);
+}

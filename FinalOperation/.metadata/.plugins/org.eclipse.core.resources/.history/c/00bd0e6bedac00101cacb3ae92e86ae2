@@ -1,0 +1,13 @@
+package service.impl;
+
+import dao.AdminDao;
+import dao.impl.AdminDaoImpl;
+import model.AdminUser;
+import service.AdminService;
+
+public class AdminServiceImpl implements AdminService {
+    private final AdminDao dao = new AdminDaoImpl();
+    @Override public AdminUser login(String u,String p,String pin){ return dao.login(u,p, pin); }
+    @Override public int getBalance(int adminId){ return dao.getBalance(adminId); }
+    @Override public boolean updateBalance(int adminId,int newBalance){ return dao.updateBalance(adminId,newBalance); }
+}

@@ -1,0 +1,65 @@
+package util;
+
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.util.Arrays;
+import java.util.List;
+
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.category.CategoryItemRenderer;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
+
+public final class ChartFont {
+    private ChartFont() {}
+
+
+    private static final List<String> CANDIDATES = Arrays.asList(
+            "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang TC",
+            "PMingLiU", "SimSun", "Arial Unicode MS", "SansSerif"
+    );
+
+    public static Font pick(int style, int size) {
+        String[] names = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames();
+        List<String> installed = Arrays.asList(names);
+        for (String f : CANDIDATES) {
+            if (installed.contains(f)) return new Font(f, style, size);
+        }
+        return new Font("SansSerif", style, size);
+    }
+
+
+    public static void applyCJK(JFreeChart chart) {
+        if (chart == null) return;
+
+        Font title = pick(Font.BOLD, 18);
+        Font axis  = pick(Font.PLAIN, 12);
+        Font tick  = pick(Font.PLAIN, 11);
+        Font legend= pick(Font.PLAIN, 12);
+
+        if (chart.getTitle() != null) chart.getTitle().setFont(title);
+        if (chart.getLegend() != null) chart.getLegend().setItemFont(legend);
+
+        if (chart.getPlot() instanceof CategoryPlot) {
+            CategoryPlot p = (CategoryPlot) chart.getPlot();
+            CategoryAxis domain = p.getDomainAxis();
+            ValueAxis    range  = p.getRangeAxis();
+            if (domain != null) { domain.setLabelFont(axis); domain.setTickLabelFont(tick); }
+            if (range  != null) { range.setLabelFont(axis);  range.setTickLabelFont(tick); }
+            CategoryItemRenderer r = p.getRenderer();
+            if (r != null) r.setDefaultItemLabelFont(tick);
+        } else if (chart.getPlot() instanceof XYPlot) {
+            XYPlot p = (XYPlot) chart.getPlot();
+            ValueAxis domain = p.getDomainAxis();
+            ValueAxis range  = p.getRangeAxis();
+            if (domain != null) { domain.setLabelFont(axis); domain.setTickLabelFont(tick); }
+            if (range  != null) { range.setLabelFont(axis);  range.setTickLabelFont(tick); }
+            XYItemRenderer r = p.getRenderer();
+            if (r != null) r.setDefaultItemLabelFont(tick);
+        }
+    }
+}

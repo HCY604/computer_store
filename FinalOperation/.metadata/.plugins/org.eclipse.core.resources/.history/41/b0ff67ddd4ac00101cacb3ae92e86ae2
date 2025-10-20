@@ -1,0 +1,93 @@
+package controller;
+
+import model.AdminUser;
+import model.Product;
+import service.ProductService;
+import service.ProcureService;
+import service.impl.ProductServiceImpl;
+import service.impl.ProcureServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class ProcurementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin;
+    private final Runnable balanceRefresher;
+
+    private final ProductService productSvc = new ProductServiceImpl();
+    private final ProcureService procureSvc = new ProcureServiceImpl();
+
+    private JComboBox<Product> cboProduct;
+    private JTextField txtPrice;
+    private JSpinner spQty;
+    private JLabel lblCostUnit, lblCostTotal;
+
+    public ProcurementUi(AdminUser admin, Runnable balanceRefresher) {
+        this.admin = admin;
+        this.balanceRefresher = balanceRefresher;
+
+        setTitle("採購進貨");
+        setSize(520, 320);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("商品："); l1.setBounds(40, 30, 60, 24); add(l1);
+        JLabel l2 = new JLabel("架上價："); l2.setBounds(40, 70, 60, 24); add(l2);
+        JLabel l3 = new JLabel("進貨量："); l3.setBounds(40, 110, 60, 24); add(l3);
+        JLabel l4 = new JLabel("成本(單/總)："); l4.setBounds(40, 150, 90, 24); add(l4);
+
+        cboProduct = new JComboBox<>(); cboProduct.setBounds(110, 30, 360, 24); add(cboProduct);
+        txtPrice = new JTextField(); txtPrice.setBounds(110, 70, 120, 24); add(txtPrice);
+        spQty = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1)); spQty.setBounds(110, 110, 100, 24); add(spQty);
+
+        lblCostUnit  = new JLabel("-"); lblCostUnit.setBounds(140, 150, 100, 24); add(lblCostUnit);
+        lblCostTotal = new JLabel("-"); lblCostTotal.setBounds(240, 150, 100, 24); add(lblCostTotal);
+
+        JButton btnCalc = new JButton("計算"); btnCalc.setBounds(250, 70, 90, 24); add(btnCalc);
+        JButton btnDo = new JButton("執行採購"); btnDo.setBounds(300, 200, 140, 28); add(btnDo);
+
+        loadProducts();
+        btnCalc.addActionListener(e -> calcCost());
+        btnDo.addActionListener(e -> doProcure());
+    }
+
+    private void loadProducts() {
+        List<Product> list = productSvc.list();
+        DefaultComboBoxModel<Product> m = new DefaultComboBoxModel<>();
+        for (Product p : list) m.addElement(p);
+        cboProduct.setModel(m);
+        cboProduct.setRenderer((list1, value, index, isSelected, cellHasFocus) ->
+                new JLabel(value == null ? "" : value.getProductName()));
+    }
+
+    private void calcCost() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) return;
+        try {
+            int shelf = Integer.parseInt(txtPrice.getText().trim());
+            int qty   = (int) spQty.getValue();
+            productSvc.updatePrice(p.getId(), shelf);
+            int costUnit  = (int) Math.round(shelf * 0.7);
+            int costTotal = costUnit * qty;
+            lblCostUnit.setText(String.valueOf(costUnit));
+            lblCostTotal.setText(String.valueOf(costTotal));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "請輸入正確的架上價");
+        }
+    }
+
+    private void doProcure() {
+        Product p = (Product) cboProduct.getSelectedItem();
+        if (p == null) return;
+        int qty = (int) spQty.getValue();
+        if (qty <= 0) { JOptionPane.showMessageDialog(this, "數量錯誤"); return; }
+
+        procureSvc.procure(admin.getId(), p.getId(), qty);
+        JOptionPane.showMessageDialog(this, "採購完成，庫存已增加、資金已扣除");
+        if (balanceRefresher != null) balanceRefresher.run();
+        dispose();
+    }
+}

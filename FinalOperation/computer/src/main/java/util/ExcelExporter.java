@@ -1,0 +1,61 @@
+package util;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.FileOutputStream;
+import java.util.List;
+import java.util.Map;
+
+public class ExcelExporter {
+
+    /**
+     * 將多個工作表一次匯出：
+     * sheets: 每個元素 = { "name": 工作表名, "headers": List<String>, "rows": List<List<Object>> }
+     * path:   輸出路徑（.xlsx）
+     */
+    @SuppressWarnings("unchecked")
+    public static void exportSheets(List<Map<String, Object>> sheets, String path) throws Exception {
+        Workbook wb = new XSSFWorkbook();
+        CellStyle head = wb.createCellStyle();
+        Font f = wb.createFont(); f.setBold(true); head.setFont(f);
+
+        for (Map<String, Object> s : sheets) {
+            String sheetName = (String) s.get("name");
+            List<String> headers = (List<String>) s.get("headers");
+            List<List<Object>> rows = (List<List<Object>>) s.get("rows");
+
+            Sheet sh = wb.createSheet(sheetName);
+            int r = 0;
+
+            // header
+            Row hr = sh.createRow(r++);
+            for (int c=0; c<headers.size(); c++) {
+                Cell cell = hr.createCell(c);
+                cell.setCellValue(headers.get(c));
+                cell.setCellStyle(head);
+            }
+
+            // rows
+            if (rows != null) {
+                for (List<Object> row : rows) {
+                    Row rr = sh.createRow(r++);
+                    for (int c=0; c<row.size(); c++) {
+                        Cell cell = rr.createCell(c);
+                        Object v = row.get(c);
+                        if (v instanceof Number) cell.setCellValue(((Number) v).doubleValue());
+                        else cell.setCellValue(v == null ? "" : String.valueOf(v));
+                    }
+                }
+            }
+
+            // autosize
+            for (int c=0; c<headers.size(); c++) sh.autoSizeColumn(c);
+        }
+
+        try (FileOutputStream out = new FileOutputStream(path)) {
+            wb.write(out);
+        }
+        wb.close();
+    }
+}

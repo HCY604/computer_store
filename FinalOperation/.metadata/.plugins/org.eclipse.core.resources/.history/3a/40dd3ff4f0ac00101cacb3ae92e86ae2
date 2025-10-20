@@ -1,0 +1,8 @@
+package service;
+
+import vo.DailyProfitVo;
+import java.util.List;
+
+public interface ReportService {
+    List<DailyProfitVo> listDailyProfit(int lastNDays);
+}

@@ -1,0 +1,8 @@
+package service;
+
+public interface FundService {
+    int  getBalance();
+    void addIncome(int amount);
+    void addExpense(int amount);
+    void addTxn(String txnType, int amount, String memo, Integer refId);
+}

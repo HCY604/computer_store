@@ -1,0 +1,59 @@
+package controller;
+
+import model.Employee;
+import service.EmployeeService;
+import service.impl.EmployeeServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class FireEmployeeUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final EmployeeService empSvc = new EmployeeServiceImpl();
+    private final Runnable onDone;
+
+    private JComboBox<EmployeeItem> cboEmp;
+
+    public FireEmployeeUi(Runnable onDone) {
+        this.onDone = onDone;
+        setTitle("開除員工");
+        setSize(420, 220);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("選擇員工："); l1.setBounds(30, 30, 80, 25); add(l1);
+        cboEmp = new JComboBox<>(); cboEmp.setBounds(110, 30, 260, 25); add(cboEmp);
+
+        JButton btnOk = new JButton("開除"); btnOk.setBounds(110, 120, 100, 28); add(btnOk);
+        JButton btnClose = new JButton("關閉"); btnClose.setBounds(260, 120, 100, 28); add(btnClose);
+
+        btnOk.addActionListener(e -> doFire());
+        btnClose.addActionListener(e -> dispose());
+
+        loadEmployees();
+    }
+
+    private void loadEmployees() {
+        DefaultComboBoxModel<EmployeeItem> m = new DefaultComboBoxModel<>();
+        List<Employee> list = empSvc.listActive();
+        for (Employee e : list) m.addElement(new EmployeeItem(e.getId(), e.getName()+"（"+e.getEmpCode()+"）"));
+        cboEmp.setModel(m);
+    }
+
+    private void doFire() {
+        EmployeeItem it = (EmployeeItem) cboEmp.getSelectedItem();
+        if (it == null) { JOptionPane.showMessageDialog(this, "沒有可開除的員工"); return; }
+        empSvc.fire(it.id);
+        JOptionPane.showMessageDialog(this, "已開除");
+        if (onDone!=null) onDone.run();
+        dispose();
+    }
+
+    private static class EmployeeItem {
+        int id; String label;
+        EmployeeItem(int id, String label){ this.id=id; this.label=label; }
+        @Override public String toString(){ return label; }
+    }
+}

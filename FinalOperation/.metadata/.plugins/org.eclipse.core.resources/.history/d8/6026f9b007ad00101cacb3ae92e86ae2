@@ -1,0 +1,66 @@
+package dao.impl;
+
+import dao.EmployeeDao;
+import model.Employee;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class EmployeeDaoImpl implements EmployeeDao {
+
+    @Override
+    public Employee findByEmpCode(String empCode) {
+        String sql = "SELECT id,emp_code,name,phone,is_admin,admin_pin,active FROM employee WHERE emp_code=? AND active=1";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, empCode);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Employee e = new Employee();
+                    e.setId(rs.getInt("id"));
+                    e.setEmpCode(rs.getString("emp_code"));
+                    e.setName(rs.getString("name"));
+                    e.setPhone(rs.getString("phone"));
+                    e.setAdmin(rs.getInt("is_admin") == 1);
+                    e.setAdminPin(rs.getString("admin_pin"));
+                    e.setActive(rs.getInt("active") == 1);
+                    return e;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("查員工失敗：" + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    @Override
+    public void insert(Employee e) {
+        String sql = "INSERT INTO employee(emp_code,name,phone,is_admin,admin_pin,active) VALUES(?,?,?,?,?,1)";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, e.getEmpCode());
+            ps.setString(2, e.getName());
+            ps.setString(3, e.getPhone());
+            ps.setInt(4, e.isAdmin() ? 1 : 0);
+            ps.setString(5, e.getAdminPin());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) e.setId(rs.getInt(1));
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("新增員工失敗：" + ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public void deactivate(int empId) {
+        String sql = "UPDATE employee SET active=0 WHERE id=?";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, empId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("開除員工失敗：" + e.getMessage(), e);
+        }
+    }
+}

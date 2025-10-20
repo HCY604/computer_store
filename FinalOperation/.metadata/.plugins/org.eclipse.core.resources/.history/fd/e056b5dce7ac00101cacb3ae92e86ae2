@@ -1,0 +1,5 @@
+package service;
+
+public interface ProcurementService {
+    boolean procure(int adminId, int productId, int quantity);
+}

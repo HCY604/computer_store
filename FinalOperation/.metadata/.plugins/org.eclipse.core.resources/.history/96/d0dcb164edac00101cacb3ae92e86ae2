@@ -1,0 +1,13 @@
+package service;
+
+import model.Attendance;
+
+import java.util.Date;
+import java.util.List;
+
+public interface AttendanceService {
+    int clockIn(int employeeId);
+    void clockOut(int attendanceId);
+    List<Attendance> findUnsettled(int employeeId, Date from, Date to);
+    int settleAndDeduct(int adminId, int employeeId, Date from, Date to);
+}

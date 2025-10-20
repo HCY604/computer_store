@@ -1,0 +1,9 @@
+package dao;
+
+import java.util.List;
+import java.util.Map;
+
+public interface ReportDao {
+    List<Map<String, Object>> dailyProfit();
+    List<Map<String, Object>> personnelCost();
+}

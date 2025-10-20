@@ -1,0 +1,79 @@
+package controller;
+
+import model.Employee;
+import model.TimeSummary;
+import service.EmployeeService;
+import service.TimeLogService;
+import service.impl.EmployeeServiceImpl;
+import service.impl.TimeLogServiceImpl;
+
+import javax.swing.*;
+import java.util.List;
+
+public class PayrollSettlementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final EmployeeService empSvc = new EmployeeServiceImpl();
+    private final TimeLogService timeSvc = new TimeLogServiceImpl();
+    private final Runnable onDone;
+
+    private JComboBox<EmpItem> cboEmp;
+    private JLabel lblSum;
+
+    public PayrollSettlementUi(Runnable onDone) {
+        this.onDone = onDone;
+        setTitle("薪資結清");
+        setSize(420, 240);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("員工："); l1.setBounds(30, 30, 60, 25); add(l1);
+        cboEmp = new JComboBox<>(); cboEmp.setBounds(90, 30, 280, 25); add(cboEmp);
+
+        lblSum = new JLabel("未結金額：$0 / 秒數 0"); lblSum.setBounds(30, 70, 340, 25); add(lblSum);
+
+        JButton btnCalc = new JButton("重新計算"); btnCalc.setBounds(30, 110, 110, 28); add(btnCalc);
+        JButton btnPay  = new JButton("結清支付"); btnPay.setBounds(160, 110, 110, 28); add(btnPay);
+        JButton btnClose= new JButton("關閉"); btnClose.setBounds(290, 110, 80, 28); add(btnClose);
+
+        btnCalc.addActionListener(e -> refreshSum());
+        btnPay.addActionListener(e -> doPay());
+        btnClose.addActionListener(e -> dispose());
+
+        loadEmployees();
+        refreshSum();
+    }
+
+    private void loadEmployees() {
+        DefaultComboBoxModel<EmpItem> m = new DefaultComboBoxModel<>();
+        List<Employee> list = empSvc.listActive();
+        for (Employee e : list) m.addElement(new EmpItem(e.getId(), e.getName()+"（"+e.getEmpCode()+"）"));
+        cboEmp.setModel(m);
+    }
+
+    private void refreshSum() {
+        EmpItem it = (EmpItem) cboEmp.getSelectedItem();
+        if (it == null) { lblSum.setText("未結金額：$0 / 秒數 0"); return; }
+        TimeSummary s = timeSvc.sumUnpaid(it.id);
+        lblSum.setText("未結金額：$" + s.getTotalAmount() + " / 秒數 " + s.getTotalSeconds());
+    }
+
+    private void doPay() {
+        EmpItem it = (EmpItem) cboEmp.getSelectedItem();
+        if (it == null) return;
+        if (timeSvc.settlePay(it.id)) {
+            JOptionPane.showMessageDialog(this, "結清完成（公司資金已扣）");
+            if (onDone!=null) onDone.run();
+            refreshSum();
+        } else {
+            JOptionPane.showMessageDialog(this, "無須結清或資金不足");
+        }
+    }
+
+    private static class EmpItem {
+        int id; String label;
+        EmpItem(int id,String label){ this.id=id; this.label=label; }
+        @Override public String toString(){ return label; }
+    }
+}

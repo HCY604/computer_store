@@ -1,0 +1,13 @@
+package dao;
+
+import model.Employee;
+import java.util.List;
+
+public interface EmployeeDao {
+    Employee loginByCode(String empCode);
+    void hire(Employee e);
+    void fire(int employeeId);
+    boolean empCodeExists(String empCode);
+    List<Employee> listActive();
+    boolean checkAdminPassword(int employeeId, String adminPassword);
+}

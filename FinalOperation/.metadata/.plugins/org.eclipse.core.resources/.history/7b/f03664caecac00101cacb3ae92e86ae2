@@ -1,0 +1,25 @@
+package service.impl;
+
+import dao.MemberDao;
+import dao.impl.MemberDaoImpl;
+import model.Member;
+import service.MemberService;
+
+public class MemberServiceImpl implements MemberService {
+    private final MemberDao dao = new MemberDaoImpl();
+
+    @Override
+    public void insert(Member m) throws IllegalArgumentException {
+        if (m == null) throw new IllegalArgumentException("會員資料不可為空");
+        if (m.getUsername() == null || m.getUsername().trim().isEmpty())
+            throw new IllegalArgumentException("帳號不可空白");
+        if (dao.existsByUsername(m.getUsername()))
+            throw new IllegalArgumentException("帳號已存在");
+        if (m.getPhone()!=null && !m.getPhone().isEmpty() && !m.getPhone().matches("^09\\d{8}$"))
+            throw new IllegalArgumentException("手機需為 09 開頭且共 10 碼");
+        dao.insert(m);
+    }
+
+    @Override
+    public Member login(String u, String p) { return dao.login(u, p); }
+}

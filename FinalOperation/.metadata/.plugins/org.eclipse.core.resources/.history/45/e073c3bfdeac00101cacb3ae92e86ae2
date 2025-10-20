@@ -1,0 +1,18 @@
+package service.impl;
+
+import dao.GoodsDao;
+import dao.impl.GoodsDaoImpl;
+import model.Goods;
+import service.GoodsService;
+
+import java.util.List;
+
+public class GoodsServiceImpl implements GoodsService {
+    private final GoodsDao dao = new GoodsDaoImpl();
+
+    @Override
+    public void save(Goods goods) { dao.insert(goods); }
+
+    @Override
+    public List<Goods> findAll() { return dao.findAll(); }
+}

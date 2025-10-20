@@ -1,0 +1,18 @@
+package service.impl;
+
+import dao.ReportDao;
+import dao.impl.ReportDaoImpl;
+import service.ReportService;
+
+import java.util.List;
+import java.util.Map;
+
+public class ReportServiceImpl implements ReportService {
+    private final ReportDao dao = new ReportDaoImpl();
+
+    @Override
+    public List<Map<String, Object>> dailyProfit() { return dao.dailyProfit(); }
+
+    @Override
+    public List<Map<String, Object>> personnelCost() { return dao.personnelCost(); }
+}

@@ -1,0 +1,62 @@
+package controller;
+
+import model.Member;
+import service.MemberService;
+import service.impl.MemberServiceImpl;
+import util.UiKit;
+
+import javax.swing.*;
+
+public class MemberRegister extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private final JFrame back;
+    private final MemberService svc = new MemberServiceImpl();
+
+    private JTextField tfName, tfUser, tfPass, tfAddr, tfPhone;
+
+    public MemberRegister(JFrame back) {
+        this.back = back;
+        setSize(460, 340);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+        UiKit.attachClockToTitle(this, "會員註冊");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        JLabel l1=new JLabel("姓名"); l1.setBounds(40,40,80,24); add(l1);
+        JLabel l2=new JLabel("帳號"); l2.setBounds(40,70,80,24); add(l2);
+        JLabel l3=new JLabel("密碼"); l3.setBounds(40,100,80,24); add(l3);
+        JLabel l4=new JLabel("地址"); l4.setBounds(40,130,80,24); add(l4);
+        JLabel l5=new JLabel("手機"); l5.setBounds(40,160,80,24); add(l5);
+
+        tfName=new JTextField(); tfName.setBounds(120,40,280,24); add(tfName);
+        tfUser=new JTextField(); tfUser.setBounds(120,70,280,24); add(tfUser);
+        tfPass=new JPasswordField(); tfPass.setBounds(120,100,280,24); add(tfPass);
+        tfAddr=new JTextField(); tfAddr.setBounds(120,130,280,24); add(tfAddr);
+        tfPhone=new JTextField(); tfPhone.setBounds(120,160,280,24); add(tfPhone);
+
+        JButton btn=new JButton("送出註冊"); btn.setBounds(180, 210, 120, 30); add(btn);
+        btn.addActionListener(e -> doRegister());
+    }
+
+    private void doRegister() {
+        String name=tfName.getText().trim();
+        String user=tfUser.getText().trim();
+        String pass=tfPass.getText().trim();
+        String addr=tfAddr.getText().trim();
+        String phone=tfPhone.getText().trim();
+
+        if (name.isEmpty()||user.isEmpty()||pass.isEmpty()){ JOptionPane.showMessageDialog(this,"姓名/帳號/密碼不可空白"); return; }
+        if (!phone.matches("^09\\d{8}$")) { JOptionPane.showMessageDialog(this,"手機需 09 開頭且共 10 碼"); return; }
+        if (svc.exists(user)) { JOptionPane.showMessageDialog(this,"帳號已存在"); return; }
+
+        Member m=new Member();
+        m.setName(name); m.setUsername(user); m.setPassword(pass);
+        m.setAddress(addr); m.setPhone(phone);
+        svc.register(m);
+
+        JOptionPane.showMessageDialog(this,"註冊成功，請登入");
+        dispose();
+        back.setVisible(true);
+    }
+}

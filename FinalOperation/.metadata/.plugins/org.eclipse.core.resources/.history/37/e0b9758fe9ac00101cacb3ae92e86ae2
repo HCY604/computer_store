@@ -1,0 +1,95 @@
+package controller;
+
+import model.AdminUser;
+import model.Attendance;
+import service.AttendanceService;
+import service.impl.AttendanceServiceImpl;
+
+import javax.swing.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+public class PayrollSettlementUi extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final AdminUser admin;
+    private final AttendanceService svc = new AttendanceServiceImpl();
+
+    private JTextField txtEmpId, txtFrom, txtTo;
+    private JTextArea txtPreview;
+
+    public PayrollSettlementUi(AdminUser admin, Runnable balanceRefresher) {
+        this.admin = admin;
+
+        setTitle("結清薪資");
+        setSize(560, 500);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("員工ID："); l1.setBounds(30, 30, 80, 24); add(l1);
+        JLabel l2 = new JLabel("起(yyyy-MM-dd)："); l2.setBounds(30, 70, 140, 24); add(l2);
+        JLabel l3 = new JLabel("迄(yyyy-MM-dd)："); l3.setBounds(30, 110, 140, 24); add(l3);
+
+        txtEmpId = new JTextField(); txtEmpId.setBounds(170, 30, 120, 24); add(txtEmpId);
+        txtFrom  = new JTextField(); txtFrom.setBounds(170, 70, 120, 24); add(txtFrom);
+        txtTo    = new JTextField(); txtTo.setBounds(170, 110, 120, 24); add(txtTo);
+
+        JButton btnPreview = new JButton("預覽"); btnPreview.setBounds(320, 70, 90, 24); add(btnPreview);
+        JButton btnSettle = new JButton("結清"); btnSettle.setBounds(420, 70, 90, 24); add(btnSettle);
+        JButton btnBack = new JButton("返回"); btnBack.setBounds(420, 110, 90, 24); add(btnBack);
+
+        txtPreview = new JTextArea(); txtPreview.setEditable(false);
+        JScrollPane sp = new JScrollPane(txtPreview);
+        sp.setBounds(30, 160, 480, 260);
+        add(sp);
+
+        btnPreview.addActionListener(e -> doPreview());
+        btnSettle.addActionListener(e -> {
+            int amt = doSettle();
+            if (amt > 0) {
+                JOptionPane.showMessageDialog(this, "已結清薪資 $" + amt + "，資金已扣除");
+                dispose();
+            }
+        });
+        btnBack.addActionListener(e -> dispose()); // 關閉回 AdminPanel
+    }
+
+    private void doPreview() {
+        try {
+            int empId = Integer.parseInt(txtEmpId.getText().trim());
+            Date from = new SimpleDateFormat("yyyy-MM-dd").parse(txtFrom.getText().trim());
+            Date to   = new SimpleDateFormat("yyyy-MM-dd").parse(txtTo.getText().trim());
+
+            List<Attendance> list = svc.findUnsettled(empId, from, to);
+            StringBuilder sb = new StringBuilder();
+            int sum = 0;
+            for (Attendance a : list) {
+                sb.append("ID=").append(a.getId())
+                  .append(" IN=").append(a.getClockIn())
+                  .append(" OUT=").append(a.getClockOut())
+                  .append(" 秒=").append(a.getSeconds())
+                  .append(" 金額=").append(a.getPaidAmount())
+                  .append("\n");
+                if (a.getPaidAmount() != null) sum += a.getPaidAmount();
+            }
+            sb.append("\n合計：$").append(sum);
+            txtPreview.setText(sb.toString());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "輸入或查詢錯誤");
+        }
+    }
+
+    private int doSettle() {
+        try {
+            int empId = Integer.parseInt(txtEmpId.getText().trim());
+            Date from = new SimpleDateFormat("yyyy-MM-dd").parse(txtFrom.getText().trim());
+            Date to   = new SimpleDateFormat("yyyy-MM-dd").parse(txtTo.getText().trim());
+            return svc.settleAndDeduct(admin.getId(), empId, from, to);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "結清失敗");
+            return 0;
+        }
+    }
+}

@@ -1,0 +1,6 @@
+package service;
+
+public interface ProcurementService {
+    /** 以「售價 70%」為成本採購；成功回 true */
+    boolean procure(int adminId, int productId, int quantity);
+}

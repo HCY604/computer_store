@@ -1,0 +1,273 @@
+package controller;
+
+import model.Employee;
+import service.AttendanceService;
+import service.EmployeeService;
+import service.FundService;
+import service.impl.AttendanceServiceImpl;
+import service.impl.EmployeeServiceImpl;
+import service.impl.FundServiceImpl;
+import util.DbConnection;
+import util.UiKit;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.HashMap;
+import java.util.Map;
+
+public class EmployeeManageWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private final JFrame back;
+    private final EmployeeService esvc = new EmployeeServiceImpl();
+    private final AttendanceService asvc = new AttendanceServiceImpl();
+    private final FundService fsvc = new FundServiceImpl();
+
+    private JTable table;
+    private DefaultTableModel model;
+    private JTextField tCode, tName;
+    private JCheckBox ckAdmin;
+
+    private JCheckBox chkOnlyDue;
+    private JLabel lblBalance;
+
+    // 欄位索引
+    private static final int COL_ID = 0;
+    private static final int COL_CODE = 1;
+    private static final int COL_NAME = 2;
+    private static final int COL_IS_ADMIN = 3;
+    private static final int COL_RATE = 4;
+    private static final int COL_ACTIVE = 5;
+    private static final int COL_SECS = 6;
+    private static final int COL_PAID = 7;
+    private static final int COL_SHOULD = 8;
+    private static final int COL_DUE = 9;
+
+    public EmployeeManageWindow(JFrame back){
+        this.back = back;
+        setSize(900, 600);
+        setLocationRelativeTo(null);
+        setLayout(null);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        UiKit.attachClockToTitle(this, "員工管理 / 發薪（未結清總覽）");
+        UiKit.createBackButton(this, e -> { back.setVisible(true); dispose(); });
+
+        // 公司餘額
+        lblBalance = new JLabel("公司餘額：$0");
+        lblBalance.setBounds(140, 20, 260, 24);
+        add(lblBalance);
+
+        chkOnlyDue = new JCheckBox("只顯示有未結");
+        chkOnlyDue.setBounds(410, 20, 120, 24);
+        add(chkOnlyDue);
+
+        JButton btnRefresh = new JButton("重新整理");
+        btnRefresh.setBounds(540, 20, 100, 24);
+        add(btnRefresh);
+
+        
+        String[] cols = {"ID","編號","姓名","管理員","秒薪","在職","已工作秒數","已發金額","應付金額","未結金額"};
+        model = new DefaultTableModel(cols, 0){
+            public boolean isCellEditable(int r, int c){ return false; }
+            public Class<?> getColumnClass(int c){
+                if (c==COL_IS_ADMIN) return Boolean.class;
+                if (c==COL_ACTIVE)   return Boolean.class;
+                if (c>=COL_SECS)     return Integer.class;
+                return String.class;
+            }
+        };
+        table = new JTable(model);
+        table.setAutoCreateRowSorter(true);
+        JScrollPane sp = new JScrollPane(table);
+        sp.setBounds(20, 60, 860, 360);
+        add(sp);
+
+        JLabel l1 = new JLabel("編號："); l1.setBounds(20, 440, 40, 24); add(l1);
+        tCode = new JTextField(); tCode.setBounds(60, 440, 120, 24); add(tCode);
+
+        JLabel l2 = new JLabel("姓名："); l2.setBounds(200, 440, 40, 24); add(l2);
+        tName = new JTextField(); tName.setBounds(240, 440, 120, 24); add(tName);
+
+        ckAdmin = new JCheckBox("管理員(秒薪10)"); ckAdmin.setBounds(380, 440, 140, 24); add(ckAdmin);
+
+        JButton addBtn  = new JButton("新增員工");  addBtn.setBounds(540, 440, 120, 26); add(addBtn);
+        JButton fireBtn = new JButton("開除");      fireBtn.setBounds(670, 440, 120, 26); add(fireBtn);
+
+        JButton payBtn = new JButton("發薪（結清未付）"); payBtn.setBounds(20, 480, 180, 30); add(payBtn);
+
+        // 事件
+        btnRefresh.addActionListener(e -> reload());
+        chkOnlyDue.addActionListener(e -> reload());
+        addBtn.addActionListener(e -> doAdd());
+        fireBtn.addActionListener(e -> doFire());
+        payBtn.addActionListener(e -> doPay());
+
+        // 初始載入
+        reload();
+    }
+
+    private void reload(){
+        loadBalance();
+        loadEmployeesWithDue();
+    }
+
+    /** 顯示公司餘額（fund_balance.id=1） */
+    private void loadBalance(){
+        String sql = "SELECT balance FROM fund_balance WHERE id=1";
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()){
+            if (rs.next()){
+                lblBalance.setText("公司餘額：$" + rs.getInt(1));
+            }
+        } catch (Exception ex){
+            JOptionPane.showMessageDialog(this, "讀取公司餘額失敗：" + ex.getMessage());
+        }
+    }
+
+   
+    private void loadEmployeesWithDue(){
+        model.setRowCount(0);
+        boolean onlyDue = chkOnlyDue.isSelected();
+
+        // 先拉一張「計算表」
+        Map<Integer, RowCalc> calc = new HashMap<Integer, RowCalc>();
+        String sql =
+            "SELECT e.id, " +
+            " COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) AS secs, " +
+            " e.rate_per_sec AS rate, " +
+            " (COALESCE(SUM(TIMESTAMPDIFF(SECOND, a.clock_in, COALESCE(a.clock_out, NOW()))),0) * e.rate_per_sec) AS should_pay, " +
+            " COALESCE((SELECT -SUM(t.amount) FROM fund_txn t WHERE t.txn_type='PAYROLL' AND t.ref_id=e.id),0) AS paid " +
+            "FROM employee e " +
+            "LEFT JOIN attendance a ON a.emp_id=e.id " +
+            "GROUP BY e.id, e.rate_per_sec";
+
+        try (Connection c = DbConnection.getDb();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()){
+            while (rs.next()){
+                int id = rs.getInt("id");
+                int secs   = rs.getInt("secs");
+                int rate   = rs.getInt("rate");
+                int should = rs.getInt("should_pay");
+                int paid   = rs.getInt("paid");
+                int due    = should - paid;
+                RowCalc rc = new RowCalc();
+                rc.secs = secs; rc.rate = rate; rc.should = should; rc.paid = paid; rc.due = due;
+                calc.put(id, rc);
+            }
+        } catch (Exception ex){
+            JOptionPane.showMessageDialog(this, "讀取未結薪資失敗：" + ex.getMessage());
+            return;
+        }
+
+        for (Employee e : esvc.all()){
+            int id = e.getId();
+            RowCalc rc = calc.get(id);
+            int secs   = (rc!=null ? rc.secs   : 0);
+            int paid   = (rc!=null ? rc.paid   : 0);
+            int should = (rc!=null ? rc.should : e.getRatePerSec() * 0);
+            int due    = (rc!=null ? rc.due    : should - paid);
+
+            if (!onlyDue || due > 0){
+                model.addRow(new Object[]{
+                        id,
+                        e.getEmpCode(),
+                        e.getName(),
+                        e.isAdmin(),
+                        e.getRatePerSec(),
+                        e.isActive(),
+                        secs,
+                        paid,
+                        should,
+                        due
+                });
+            }
+        }
+    }
+
+    private static class RowCalc {
+        int secs;
+        int rate;
+        int should;
+        int paid;
+        int due;
+    }
+
+
+    private void doAdd(){
+        String code = tCode.getText().trim();
+        String name = tName.getText().trim();
+        if (code.isEmpty() || name.isEmpty()){
+            JOptionPane.showMessageDialog(this, "請輸入編號與姓名");
+            return;
+        }
+        Employee e = new Employee();
+        e.setEmpCode(code);
+        e.setName(name);
+        e.setAdmin(ckAdmin.isSelected());
+        e.setAdminPassword("123456");
+        e.setRatePerSec(ckAdmin.isSelected() ? 10 : 1);
+        e.setActive(true);
+        try {
+            esvc.add(e);
+            JOptionPane.showMessageDialog(this,"新增完成");
+            tCode.setText(""); tName.setText(""); ckAdmin.setSelected(false);
+            reload();
+        } catch (Exception ex){
+            JOptionPane.showMessageDialog(this,"新增失敗，可能是編號重複");
+        }
+    }
+
+    /** 開除（沿用你原本邏輯） */
+    private void doFire(){
+        int r = table.getSelectedRow();
+        if (r < 0){ JOptionPane.showMessageDialog(this,"請選取員工"); return; }
+        r = table.convertRowIndexToModel(r);
+        int id = (Integer) model.getValueAt(r, COL_ID);
+        esvc.setActive(id, false);
+        JOptionPane.showMessageDialog(this,"已開除");
+        reload();
+    }
+
+ 
+    private void doPay(){
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0){ JOptionPane.showMessageDialog(this,"請選取員工"); return; }
+        int r = table.convertRowIndexToModel(viewRow);
+
+        int empId   = (Integer) model.getValueAt(r, COL_ID);
+        String code = (String)  model.getValueAt(r, COL_CODE);
+        String name = (String)  model.getValueAt(r, COL_NAME);
+        int due     = (Integer) model.getValueAt(r, COL_DUE);
+
+        if (due <= 0){
+            JOptionPane.showMessageDialog(this,"此員工沒有未結金額");
+            return;
+        }
+
+        String input = JOptionPane.showInputDialog(this,
+                "結清金額（預設為未結："+due+"）", String.valueOf(due));
+        if (input == null) return;
+
+        int pay;
+        try { pay = Integer.parseInt(input.trim()); }
+        catch (Exception ex){ JOptionPane.showMessageDialog(this,"金額格式錯誤"); return; }
+        if (pay <= 0){ JOptionPane.showMessageDialog(this,"金額需 > 0"); return; }
+        if (pay > due){ JOptionPane.showMessageDialog(this,"不可超過未結金額"); return; }
+
+        // 記帳（支出為負數），並結清工時
+        try {
+            fsvc.addTxn("PAYROLL", -pay, "薪資給付 - "+code+" / "+name, empId);
+            try { asvc.settle(empId); } catch (Exception ignore) {}
+            JOptionPane.showMessageDialog(this,"已發薪："+pay+" 元");
+            reload();
+        } catch (Exception ex){
+            JOptionPane.showMessageDialog(this,"發薪失敗："+ex.getMessage());
+        }
+    }
+}

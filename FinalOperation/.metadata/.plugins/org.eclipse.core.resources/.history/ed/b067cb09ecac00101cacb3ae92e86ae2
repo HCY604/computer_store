@@ -1,0 +1,28 @@
+package vo;
+
+import java.util.List;
+
+public class ReceiptVo {
+    private String memberName;
+    private String username;
+    private String recordTime;
+    private int total;
+    private int cash;
+    private int change;
+    private java.util.List<OrderItemVo> items;
+
+    public String getMemberName() { return memberName; }
+    public void setMemberName(String memberName) { this.memberName = memberName; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getRecordTime() { return recordTime; }
+    public void setRecordTime(String recordTime) { this.recordTime = recordTime; }
+    public int getTotal() { return total; }
+    public void setTotal(int total) { this.total = total; }
+    public int getCash() { return cash; }
+    public void setCash(int cash) { this.cash = cash; }
+    public int getChange() { return change; }
+    public void setChange(int change) { this.change = change; }
+    public List<OrderItemVo> getItems() { return items; }
+    public void setItems(List<OrderItemVo> items) { this.items = items; }
+}

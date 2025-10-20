@@ -1,0 +1,7 @@
+package dao;
+
+public interface AttendanceDao {
+    int clockIn(int empId);                   // 回傳 logId
+    void clockOut(int logId);                 // 計算秒數寫回
+    int settleUnpaidAndReturnAmount();        // 把未結清的 seconds_worked 全部結清並回傳總金額
+}

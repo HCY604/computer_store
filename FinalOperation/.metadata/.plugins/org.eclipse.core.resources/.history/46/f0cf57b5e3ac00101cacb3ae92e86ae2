@@ -1,0 +1,94 @@
+package service.impl;
+
+import service.ProcurementService;
+import util.DbConnection;
+
+import java.sql.*;
+
+public class ProcurementServiceImpl implements ProcurementService {
+
+    @Override
+    public boolean procure(int adminId, int productId, int quantity) {
+        String sqlSelectProd = "SELECT shelf_price, stock_qty FROM product WHERE id=? FOR UPDATE";
+        String sqlSelectBal  = "SELECT balance FROM admin_user WHERE id=? FOR UPDATE";
+        String sqlUpdProd    = "UPDATE product SET stock_qty = stock_qty + ? WHERE id=?";
+        String sqlUpdBal     = "UPDATE admin_user SET balance = balance - ? WHERE id=?";
+        String sqlInsProc    = "INSERT INTO procurement(admin_id, product_id, quantity, cost_unit, cost_total) VALUES(?,?,?,?,?)";
+        String sqlInvTxn     = "INSERT INTO inventory_txn(product_id, txn_type, quantity, note, related_id) VALUES(?, 'PROCURE', ?, ?, ?)";
+
+        Connection conn = null;
+        try {
+            conn = DbConnection.getDb();
+            conn.setAutoCommit(false);
+
+            int shelfPrice=0, stock=0;
+            try (PreparedStatement ps = conn.prepareStatement(sqlSelectProd)) {
+                ps.setInt(1, productId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) { conn.rollback(); return false; }
+                    shelfPrice = rs.getInt("shelf_price");
+                    stock = rs.getInt("stock_qty");
+                }
+            }
+
+            int costUnit  = (int)Math.round(shelfPrice * 0.7);
+            int costTotal = costUnit * quantity;
+
+            int balance=0;
+            try (PreparedStatement ps = conn.prepareStatement(sqlSelectBal)) {
+                ps.setInt(1, adminId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) { conn.rollback(); return false; }
+                    balance = rs.getInt(1);
+                }
+            }
+            if (balance < costTotal) { conn.rollback(); return false; }
+
+            // 更新庫存
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdProd)) {
+                ps.setInt(1, quantity);
+                ps.setInt(2, productId);
+                ps.executeUpdate();
+            }
+
+            // 扣資金
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdBal)) {
+                ps.setInt(1, costTotal);
+                ps.setInt(2, adminId);
+                ps.executeUpdate();
+            }
+
+            // 寫入採購
+            long procId;
+            try (PreparedStatement ps = conn.prepareStatement(sqlInsProc, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, adminId);
+                ps.setInt(2, productId);
+                ps.setInt(3, quantity);
+                ps.setInt(4, costUnit);
+                ps.setInt(5, costTotal);
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    procId = rs.next() ? rs.getLong(1) : 0L;
+                }
+            }
+
+            // 庫存異動流水
+            try (PreparedStatement ps = conn.prepareStatement(sqlInvTxn)) {
+                ps.setInt(1, productId);
+                ps.setInt(2, quantity);
+                ps.setString(3, "admin procure");
+                ps.setLong(4, procId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (Exception ex) {
+            try { if (conn != null) conn.rollback(); } catch (Exception ignore) {}
+            ex.printStackTrace();
+            return false;
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (Exception ignore) {}
+        }
+    }
+}

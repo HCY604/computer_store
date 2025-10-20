@@ -1,0 +1,14 @@
+package dao;
+
+import model.Product;
+import java.util.List;
+
+public interface ProductDao {
+    List<String> listCategories();
+    List<Product> listByCategory(String categoryName);
+    List<Product> listNeedRestock();
+    Product findByName(String name);
+    Product findById(int id);
+    boolean decreaseStock(int productId, int qty);
+    boolean increaseStock(int productId, int qty);
+}

@@ -1,0 +1,50 @@
+package controller;
+
+import model.AdminUser;
+import service.AdminService;
+import service.impl.AdminServiceImpl;
+
+import javax.swing.*;
+
+public class AdminLogin extends JFrame {
+    private static final long serialVersionUID = 1L;
+
+    private JTextField txtU, txtPin;
+    private JPasswordField txtP;
+    private final AdminService svc = new AdminServiceImpl();
+
+    public AdminLogin() {
+        setTitle("管理員登入");
+        setSize(420, 280);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        JLabel l1 = new JLabel("帳號："); l1.setBounds(40, 30, 80, 24); add(l1);
+        JLabel l2 = new JLabel("密碼："); l2.setBounds(40, 70, 80, 24); add(l2);
+        JLabel l3 = new JLabel("安全PIN："); l3.setBounds(40, 110, 80, 24); add(l3);
+
+        txtU = new JTextField(); txtU.setBounds(120, 30, 240, 24); add(txtU);
+        txtP = new JPasswordField(); txtP.setBounds(120, 70, 240, 24); add(txtP);
+        txtPin = new JTextField(); txtPin.setBounds(120, 110, 240, 24); add(txtPin);
+
+        JButton btn = new JButton("登入"); btn.setBounds(120, 160, 90, 28); add(btn);
+        JButton back = new JButton("返回主選單"); back.setBounds(220, 160, 120, 28); add(back);
+
+        btn.addActionListener(e -> doLogin());
+        back.addActionListener(e -> { new RoleSelector().setVisible(true); dispose(); });
+    }
+
+    private void doLogin() {
+        String u = txtU.getText().trim();
+        String p = new String(txtP.getPassword());
+        String pin = txtPin.getText().trim();
+        AdminUser a = svc.login(u, p, pin);
+        if (a != null) {
+            new AdminPanel(a).setVisible(true);
+            dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "登入失敗");
+        }
+    }
+}

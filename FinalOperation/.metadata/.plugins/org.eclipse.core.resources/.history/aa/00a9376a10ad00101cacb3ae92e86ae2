@@ -1,0 +1,14 @@
+package dao;
+
+import java.util.List;
+import model.Product;
+
+public interface ProductDao {
+    List<Product> findAll();
+
+    /** 依名稱找商品（資料表建議對 name 建唯一索引） */
+    Product findByName(String name);
+
+    /** 變更庫存：delta 可正可負 */
+    void changeStock(int productId, int delta);
+}

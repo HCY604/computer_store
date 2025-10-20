@@ -1,0 +1,9 @@
+package dao;
+
+import model.Employee;
+
+public interface EmployeeDao {
+    void insert(Employee e);
+    boolean existsByUsername(String username);
+    Employee login(String username, String password);
+}

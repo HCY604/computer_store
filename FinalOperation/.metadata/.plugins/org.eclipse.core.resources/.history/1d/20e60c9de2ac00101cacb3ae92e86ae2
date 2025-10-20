@@ -1,0 +1,9 @@
+package dao;
+
+import model.Member;
+
+public interface MemberDao {
+    void insert(Member m);
+    Member login(String username, String password);
+    boolean existsByUsername(String username);
+}

@@ -1,0 +1,30 @@
+package controller;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Order {
+
+    public static class Item {
+        private String categoryName;
+        private String productName;
+        private int unitPrice;
+        private int quantity;
+        public Item(String categoryName, String productName, int unitPrice, int quantity) {
+            this.categoryName = categoryName; this.productName = productName;
+            this.unitPrice = unitPrice; this.quantity = quantity;
+        }
+        public String getCategoryName() { return categoryName; }
+        public String getProductName() { return productName; }
+        public int getUnitPrice() { return unitPrice; }
+        public int getQuantity() { return quantity; }
+        public int getLineTotal() { return unitPrice * quantity; }
+    }
+
+    private final List<Item> items = new ArrayList<>();
+    public void addItem(Item item) { if (item != null) items.add(item); }
+    public void removeItemAt(int index) { if (index >= 0 && index < items.size()) items.remove(index); }
+    public List<Item> getItems() { return items; }
+    public int getTotalAmount() { return items.stream().mapToInt(Item::getLineTotal).sum(); }
+    public void clear() { items.clear(); }
+}

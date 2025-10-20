@@ -1,0 +1,37 @@
+package vo;
+
+import model.Member;
+import vo.OrderItemVo;
+import vo.ReceiptVo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class VoFactory {
+    public static ReceiptVo createReceipt(Member m, List<controller.Order.Item> items, int total, int cash, int change, String recordTime) {
+        ReceiptVo vo = new ReceiptVo();
+        if (m != null) {
+            vo.setMemberName(m.getName());            vo.setUsername(m.getUsername());
+        } else {
+            vo.setMemberName("訪客");
+            vo.setUsername("-");
+        }
+        vo.setRecordTime(recordTime);
+        vo.setTotal(total);
+        vo.setCash(cash);
+        vo.setChange(change);
+
+        List<OrderItemVo> rows = new ArrayList<>();
+        for (controller.Order.Item it : items) {
+            OrderItemVo row = new OrderItemVo();
+            row.setCategoryName(it.getCategoryName());
+            row.setProductName(it.getProductName());
+            row.setUnitPrice(it.getUnitPrice());
+            row.setQuantity(it.getQuantity());
+            row.setLineTotal(it.getLineTotal());
+            rows.add(row);
+        }
+        vo.setItems(rows);
+        return vo;
+    }
+}
